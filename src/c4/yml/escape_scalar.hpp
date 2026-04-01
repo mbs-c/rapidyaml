@@ -241,12 +241,12 @@ inline C4_NO_INLINE size_t adjust_pos_with_escapes(csubstr scalar, size_t pos, b
 inline C4_NO_INLINE size_t escape_scalar(substr buffer, csubstr scalar, bool keep_newlines=false)
 {
     size_t pos = 0;
-    auto _append = [&pos, &buffer](csubstr repl){
+    auto append_ = [&pos, &buffer](csubstr repl){
         if(repl.len && (pos + repl.len <= buffer.len))
             memcpy(buffer.str + pos, repl.str, repl.len);
         pos += repl.len;
     };
-    escape_scalar_fn(std::ref(_append), scalar, keep_newlines);
+    escape_scalar_fn(append_, scalar, keep_newlines);
     return pos;
 }
 C4_SUPPRESS_WARNING_GCC_POP
