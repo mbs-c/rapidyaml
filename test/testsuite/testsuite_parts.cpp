@@ -28,44 +28,20 @@ const AllowedFailure allowed_failures[] = {
     //
     // These tests are temporarily skipped, and cover issues that must be fixed.
 
-    // These invalid YAML cases should materialize parse errors, and currently don't.
-    // tc=Y79Y_004 ; td=`echo $tc | sed s:_:/:g`  // NOLINT
-
-    // flow seq
-    _("Y79Y_004-error"          , "cannot use tab for indentation of block entry"),
-    _("Y79Y_005-error"          , "cannot use tab for indentation of block entry"),
-
-    // block seq
-    _("SY6V-error"              , "should not accept - after anchor"),
-
-    // block maps
-    _("4EJS-error"              , "should not accept tabs as indendation in a mapping"),
-    _("5U3A-error"              , "should not accept opening a sequence on same line as block key"),
-    _("C2SP-error"              , "should not accept flow sequence key with terminating ] on the next line"),
-    _("DK95_06-error"           , "should not accept tab indentation"),
-    _("Y79Y_006-error"          , "should not accept tab after ?"),
-    _("Y79Y_007-error"          , "should not accept tab after : succeeding ?"),
-    _("Y79Y_008-error"          , "should not accept tab after ?"),
-    _("Y79Y_009-error"          , "should not accept tab after : succeeding ?"),
-
-    // single-quoted scalars
-    _("RXY3-error"              , "should not accept document-end marker in single quoted string"),
-
-    // double-quoted scalars
-    _("5TRB-error"              , "should not accept document-end marker in double quoted string"),
-    _("9MQT_01-error"           , "should not accept document-end marker in double quoted string"),
+    // These invalid YAML cases should cause parse errors, and currently don't.
 
     // block scalars
-    _("S4GJ-error"              , "should not accept text after block scalar indicator"),
     _("S98Z-error"              , "should not accept block scalar with more spaces than first content line"),
-    _("X4QW-error"              , "should not accept comment without whitespace after block scalar indicator"),
-
     // docs
     _("CXX2-error"              , "should not accept map with anchor after document start token"), // same for scalars/seqs
-
     // directives
-    _("H7TQ-error"              , "should not accept extra words after directive"),
-    _("QLJ7-error"              , "tag directives should apply only to the next doc (?)"),
+    _("QLJ7-error"              , "%TAG should apply only to the next document"),
+    // tabs
+    _("Y79Y_004-error"          , "cannot use tab for indentation of block entry"),
+    _("Y79Y_006-error"          , "should not accept tab after ?"),
+    _("Y79Y_008-error"          , "should not accept tab after ?"),
+    _("Y79Y_007-error"          , "tab tokens"),
+    _("Y79Y_009-error"          , "should not accept tab after : succeeding ?"),
 
 
     //-------------------------------------------------------------------------
@@ -79,8 +55,6 @@ const AllowedFailure allowed_failures[] = {
     _("6BCT-in_yaml"            , "tabs tokens"),
     _("A2M4-in_yaml"            , "tabs tokens"),
     _("DC7X-in_yaml"            , "tabs tokens"),
-    _("DK95_00-in_yaml"         , "tabs tokens"),
-    _("DK95_04-in_yaml"         , "tabs tokens"),
     _("J3BT-in_yaml"            , "tabs tokens"),
     _("K54U-in_yaml"            , "tabs tokens"),
     _("Y79Y_010-in_yaml"        , "tabs tokens"),

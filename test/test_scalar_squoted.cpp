@@ -126,6 +126,16 @@ squoted_case test_cases_filter[] = {
     sqc(R"(    a aaaa    )",  "    a aaaa    "),
     sqc(R"(     a aaaa     )",  "     a aaaa     "),
     sqc(R"(x\ny:z\tx $%^&*()x)", "x\\ny:z\\tx $%^&*()x"),
+    sqc(R"( ---)",  " ---"),
+    sqc(R"( ...)",  " ..."),
+    // 45
+    sqc(R"( --- )",  " --- "),
+    sqc(R"( ... )",  " ... "),
+    sqc(R"(  ---  )",  "  ---  "),
+    sqc(R"(  ...  )",  "  ...  "),
+    sqc(" ---\n",  " --- "),
+    // 50
+    sqc(" ...\n",  " ... "),
     #undef sqc
 };
 
@@ -153,10 +163,6 @@ string'
 - 'quoted
  string'
 ---
-'quoted
- string': 'quoted
- string'
----
 'quoted string': 'quoted
  string'
 )";
@@ -166,7 +172,6 @@ string'
         EXPECT_EQ(t.docref(2)[0].val(), "quoted string");
         EXPECT_EQ(t.docref(3)[0].val(), "quoted string");
         EXPECT_EQ(t.docref(4)["quoted string"].val(), "quoted string");
-        EXPECT_EQ(t.docref(5)["quoted string"].val(), "quoted string");
     });
 }
 
@@ -319,6 +324,7 @@ void verify_filter_error_is_reported(csubstr case_name, csubstr scalar_, Locatio
 
 TEST(single_quoted, error_on_unmatched_quotes)
 {
+    verify_error_is_reported("doc", R"(')");
     verify_error_is_reported("map block", R"(foo: '"
 bar: '')");
     verify_error_is_reported("seq block", R"(- '"
@@ -329,6 +335,7 @@ bar: '')");
 
 TEST(single_quoted, error_on_unmatched_quotes_with_escapes)
 {
+    verify_error_is_reported("doc", R"(''')");
     verify_error_is_reported("map block", R"(foo: '''"
 bar: '')");
     verify_error_is_reported("seq block", R"(- '''"
@@ -514,13 +521,13 @@ R"('''''''''''')",
 );
 
 ADD_CASE_TO_GROUP("squoted, example 2",
-R"('This is a key
+R"('This is a scalar
 
 that has multiple lines
 
-': and this is its value
+'
 )",
-N(MB, L{N(KS|VP, "This is a key\nthat has multiple lines\n", "and this is its value")})
+N(VS, "This is a scalar\nthat has multiple lines\n")
 );
 
 ADD_CASE_TO_GROUP("squoted indentation, 0",

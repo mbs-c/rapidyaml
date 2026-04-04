@@ -338,6 +338,16 @@ dquoted_case test_cases_filter[] = {
     //dqc("	\n\ndetected\n\n", "\t\ndetected\n"), // this case cannot be prefixed with anything.
     dqc(R"(This is a key\nthat has multiple lines\n)", "This is a key\nthat has multiple lines\n"),
     dqc("This is a key\n\nthat has multiple lines\n\n", "This is a key\nthat has multiple lines\n"),
+    dqc(R"( ---)",  " ---"),
+    // 85
+    dqc(R"( ...)",  " ..."),
+    dqc(R"( --- )",  " --- "),
+    dqc(R"( ... )",  " ... "),
+    dqc(R"(  ---  )",  "  ---  "),
+    dqc(R"(  ...  )",  "  ...  "),
+    // 90
+    dqc(" ---\n",  " --- "),
+    dqc(" ...\n",  " ... "),
     #undef dqc
 };
 C4_SUPPRESS_WARNING_MSVC_POP
@@ -617,13 +627,8 @@ string"
 - "quoted
  string"
 ---
-"quoted
-  string": "quoted
+"quoted string": "quoted
   string"
----
-"quoted
- string": "quoted
- string"
 )";
     test_check_emit_check(yaml, [](Tree const &t){
         EXPECT_EQ(t.docref(0).val(), "quoted string");
@@ -631,7 +636,6 @@ string"
         EXPECT_EQ(t.docref(2)[0].val(), "quoted string");
         EXPECT_EQ(t.docref(3)[0].val(), "quoted string");
         EXPECT_EQ(t.docref(4)["quoted string"].val(), "quoted string");
-        EXPECT_EQ(t.docref(5)["quoted string"].val(), "quoted string");
     });
 }
 
@@ -742,6 +746,7 @@ void verify_error_is_reported(csubstr case_name, csubstr yaml, Location loc={})
 
 TEST(double_quoted, error_on_unmatched_quotes)
 {
+    verify_error_is_reported("doc", R"(")");
     verify_error_is_reported("map block", R"(foo: "'
 bar: "")");
     verify_error_is_reported("seq block", R"(- "'
@@ -752,6 +757,7 @@ bar: "")");
 
 TEST(double_quoted, error_on_unmatched_quotes_with_escapes)
 {
+    verify_error_is_reported("doc", R"("\")");
     verify_error_is_reported("map block", R"(foo: "\"'
 bar: "")");
     verify_error_is_reported("seq block", R"(- "\"'
@@ -1044,9 +1050,9 @@ R"("This is a key
 
 that has multiple lines
 
-": and this is its value
+"
 )",
-N(MB, L{N(KD|VP, "This is a key\nthat has multiple lines\n", "and this is its value")})
+N(VD, "This is a key\nthat has multiple lines\n")
 );
 
 ADD_CASE_TO_GROUP("dquoted, invalid indentation JKF3, 0", EXPECT_PARSE_ERROR,

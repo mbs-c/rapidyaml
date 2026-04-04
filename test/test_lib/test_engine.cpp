@@ -192,15 +192,18 @@ void test_engine_tree_from_yaml(EngineEvtTestCase const& test_case, std::string 
     print_tree("parsed_tree", tree);
     #endif
     std::string actual = emitrs_yaml<std::string>(tree);
-    _c4dbgpf("~~~\n{}~~~\n", actual);
-    EXPECT_EQ(test_case.expected_emitted, actual);
+    if(!(test_case.test_case_flags & NO_COMPARE_EMITTED))
+    {
+        _c4dbgpf("~~~\n{}~~~\n", actual);
+        EXPECT_EQ(test_case.expected_emitted, actual);
+    }
 }
 
 void test_engine_roundtrip_from_yaml(EngineEvtTestCase const& test_case, std::string const& yaml)
 {
-    SCOPED_TRACE("test_engine_roundtrip_from_yaml");
-    if(test_case.test_case_flags & HAS_CONTAINER_KEYS)
+    if(test_case.test_case_flags & HAS_CONTAINER_KEYS) // NOLINT
         return;
+    SCOPED_TRACE("test_engine_roundtrip_from_yaml");
     csubstr filename = "(testyaml)";
     std::string copy = yaml;
     const Tree parsed_tree = parse_in_place(filename, to_substr(copy), test_case.opts);
@@ -212,7 +215,10 @@ void test_engine_roundtrip_from_yaml(EngineEvtTestCase const& test_case, std::st
         test_invariants(parsed_tree);
     }
     const std::string parsed_tree_emitted = emitrs_yaml<std::string>(parsed_tree);
-    EXPECT_EQ(test_case.expected_emitted, parsed_tree_emitted);
+    if(!(test_case.test_case_flags & NO_COMPARE_EMITTED))
+    {
+        EXPECT_EQ(test_case.expected_emitted, parsed_tree_emitted);
+    }
     std::string emitted0_copy = parsed_tree_emitted;
     const Tree after_roundtrip = parse_in_place(filename, to_substr(emitted0_copy), test_case.opts);
     {
@@ -225,7 +231,10 @@ void test_engine_roundtrip_from_yaml(EngineEvtTestCase const& test_case, std::st
                      "after_roundtrip", "parsed_tree");
     }
     const std::string after_roundtrip_emitted = emitrs_yaml<std::string>(after_roundtrip);
-    EXPECT_EQ(test_case.expected_emitted, after_roundtrip_emitted);
+    if(!(test_case.test_case_flags & NO_COMPARE_EMITTED))
+    {
+        EXPECT_EQ(test_case.expected_emitted, after_roundtrip_emitted);
+    }
     if(testing::Test::HasFailure())
     {
         printf("source: ~~~\n%.*s~~~\n", (int)yaml.size(), yaml.data());
@@ -295,6 +304,8 @@ void test_engine_roundtrip_from_yaml_with_comments(EngineEvtTestCase const& test
     if(test_case.test_case_flags & HAS_CONTAINER_KEYS)
         return;
     if(test_case.test_case_flags & HAS_MULTILINE_SCALAR)
+        return;
+    if(test_case.test_case_flags & NO_COMPARE_EMITTED)
         return;
     const auto injected_comment_cases = inject_comments_in_src(test_case.yaml);
     for(size_t i = 0; i < injected_comment_cases.size(); ++i)
