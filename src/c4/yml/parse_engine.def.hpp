@@ -1288,14 +1288,14 @@ template<class EventHandler>
 bool ParseEngine<EventHandler>::_is_doc_begin(csubstr s)
 {
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s[0] == '-', m_evt_handler->m_curr->pos);
-    return (m_evt_handler->m_curr->line_contents.indentation == 0u && _at_line_begin() && _is_doc_begin_token(s));
+    return (m_evt_handler->m_curr->line_contents.indentation == 0u && m_evt_handler->m_curr->at_line_beginning() && _is_doc_begin_token(s));
 }
 
 template<class EventHandler>
 bool ParseEngine<EventHandler>::_is_doc_end(csubstr s)
 {
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s[0] == '.', m_evt_handler->m_curr->pos);
-    return (m_evt_handler->m_curr->line_contents.indentation == 0u && _at_line_begin() && _is_doc_end_token(s));
+    return (m_evt_handler->m_curr->line_contents.indentation == 0u && m_evt_handler->m_curr->at_line_beginning() && _is_doc_end_token(s));
 }
 
 template<class EventHandler>
@@ -2094,7 +2094,7 @@ typename ParseEngine<EventHandler>::ScannedScalar ParseEngine<EventHandler>::_sc
         needs_filter = needs_filter
             || (numlines > 1)
             || line_is_blank
-            || (_at_line_begin() && line.begins_with(' '));
+            || (m_evt_handler->m_curr->at_line_beginning() && line.begins_with(' '));
 
         if(pos == npos)
         {
@@ -2195,7 +2195,7 @@ typename ParseEngine<EventHandler>::ScannedScalar ParseEngine<EventHandler>::_sc
         needs_filter = needs_filter
             || (numlines > 1)
             || line_is_blank
-            || (_at_line_begin() && rem.begins_with(' '));
+            || (m_evt_handler->m_curr->at_line_beginning() && rem.begins_with(' '));
 
         if(pos == npos)
         {
@@ -6207,7 +6207,7 @@ seqblck_start:
         // handle indentation
         //
         _c4dbgpf("seqblck[RNXT]: indref={} indentation={}", m_evt_handler->m_curr->indref, m_evt_handler->m_curr->line_contents.indentation);
-        if(C4_LIKELY(_at_line_begin()))
+        if(C4_LIKELY(m_evt_handler->m_curr->at_line_beginning()))
         {
             _c4dbgp("seqblck[RNXT]: at line begin");
             if(m_evt_handler->m_curr->indentation_ge())
@@ -7691,7 +7691,7 @@ void ParseEngine<EventHandler>::_handle_unk()
 
     _c4dbgpf("rem is now {}", _prs(m_evt_handler->m_curr->line_contents.rem));
 
-    if(m_evt_handler->m_curr->line_contents.indentation == 0u && (_at_line_begin() || (m_bom_len && (m_evt_handler->m_curr->pos.line == m_bom_line))))
+    if(m_evt_handler->m_curr->line_contents.indentation == 0u && (m_evt_handler->m_curr->at_line_beginning() || (m_bom_len && (m_evt_handler->m_curr->pos.line == m_bom_line))))
     {
         _c4dbgpf("rtop: zero indent + at line begin. offset={}", m_evt_handler->m_curr->pos.offset);
         _c4dbgp("check BOM");

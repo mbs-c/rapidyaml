@@ -604,11 +604,6 @@ private:
     void   _scan_line();
     substr _peek_next_line(size_t pos=npos) const;
 
-    C4_ALWAYS_INLINE bool _at_line_begin() const noexcept
-    {
-        return m_evt_handler->m_curr->line_contents.rem.str == m_evt_handler->m_curr->line_contents.full.str;
-    }
-
     void _relocate_arena(csubstr prev_arena, substr next_arena);
     static void _s_relocate_arena(void*, csubstr prev_arena, substr next_arena);
 
