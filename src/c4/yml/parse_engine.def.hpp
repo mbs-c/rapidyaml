@@ -4612,6 +4612,24 @@ size_t ParseEngine<EventHandler>::_select_indentation_from_annotations(size_t va
 }
 
 template<class EventHandler>
+void ParseEngine<EventHandler>::_handle_keyref(csubstr alias)
+{
+    if(C4_LIKELY(!(m_pending_anchors.num_entries | m_pending_tags.num_entries)))
+        m_evt_handler->set_key_ref(alias);
+    else
+        _c4err("aliases cannot have anchors or tags");
+}
+
+template<class EventHandler>
+void ParseEngine<EventHandler>::_handle_valref(csubstr alias)
+{
+    if(C4_LIKELY(!(m_pending_anchors.num_entries | m_pending_tags.num_entries)))
+        m_evt_handler->set_val_ref(alias);
+    else
+        _c4err("aliases cannot have anchors or tags");
+}
+
+template<class EventHandler>
 void ParseEngine<EventHandler>::_handle_directive(csubstr rem)
 {
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, rem.is_sub(m_evt_handler->m_curr->line_contents.rem), m_evt_handler->m_curr->pos);
@@ -5100,7 +5118,7 @@ seqimap_start:
         {
             csubstr ref = _scan_ref_seq();
             _c4dbgpf("seqimap[RVAL]: ref! {}", _prs(ref));
-            m_evt_handler->set_val_ref(ref);
+            _handle_valref(ref);
             addrem_flags(RNXT, RVAL);
         }
         else if(first == '&')
@@ -5215,7 +5233,7 @@ seqimap_start:
         {
             csubstr ref = _scan_ref_seq();
             _c4dbgp("seqimap[QMRK]: ref!");
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
             addrem_flags(RKCL, QMRK);
         }
         else
@@ -5356,7 +5374,7 @@ seqflow_start:
         else if(first == ']') // this happens on cases such as [] or [.., ]
         {
             _c4dbgp("seqflow[RVAL]: end!");
-            if(m_pending_anchors.num_entries || m_pending_tags.num_entries)
+            if(m_pending_anchors.num_entries | m_pending_tags.num_entries)
             {
                 _c4dbgp("seqflow[RVAL]: add pending annotations");
                 _handle_annotations_before_blck_val_scalar();
@@ -5604,7 +5622,7 @@ mapflow_start:
         {
             csubstr ref = _scan_ref_map();
             _c4dbgpf("mapflow[RKEY]: key ref! {}", _prs(ref));
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
             addrem_flags(RKCL, RKEY);
         }
         else if(first == '[')
@@ -5752,7 +5770,7 @@ mapflow_start:
         {
             csubstr ref = _scan_ref_map();
             _c4dbgpf("mapflow[RVAL]: key ref! {}", _prs(ref));
-            m_evt_handler->set_val_ref(ref);
+            _handle_valref(ref);
             addrem_flags(RNXT, RVAL);
         }
         else if(first == '&')
@@ -5869,7 +5887,7 @@ mapflow_start:
         {
             csubstr ref = _scan_ref_map();
             _c4dbgpf("mapflow[QMRK]: key ref! {}", _prs(ref));
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
             addrem_flags(RKCL, QMRK);
         }
         else if(first == '[')
@@ -6205,8 +6223,7 @@ seqblck_start:
             if(!_maybe_scan_following_colon())
             {
                 _c4dbgp("seqblck[RVAL]: set ref as val!");
-                _handle_annotations_before_blck_val_scalar();
-                m_evt_handler->set_val_ref(ref);
+                _handle_valref(ref);
                 addrem_flags(RNXT, RVAL);
             }
             else
@@ -6216,7 +6233,7 @@ seqblck_start:
                 _handle_annotations_before_start_mapblck(startline);
                 m_evt_handler->begin_map_val_block();
                 _handle_annotations_and_indentation_after_start_mapblck(startindent, startline);
-                m_evt_handler->set_key_ref(ref);
+                _handle_keyref(ref);
                 addrem_flags(RMAP|RVAL, RSEQ|RNXT);
                 _set_indentation(startindent);
                 _maybe_skip_whitespace_tokens();
@@ -6573,8 +6590,7 @@ mapblck_start:
         {
             csubstr ref = _scan_ref_map();
             _c4dbgpf("mapblck[RKEY]: key ref! {}", _prs(ref));
-            _handle_annotations_before_blck_key_scalar();
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
             addrem_flags(RVAL, RKEY);
             if(!_maybe_scan_following_colon())
                 _c4err("could not find ':' colon after key");
@@ -6961,7 +6977,7 @@ mapblck_start:
             if(startindent == m_evt_handler->m_curr->indref)
             {
                 _c4dbgpf("mapblck[RVAL]: same indentation {}", startindent);
-                m_evt_handler->set_val_ref(ref);
+                _handle_valref(ref);
                 addrem_flags(RNXT, RVAL);
             }
             else
@@ -6972,9 +6988,8 @@ mapblck_start:
                 {
                     _c4dbgp("mapblck[RVAL]: start child map, block");
                     addrem_flags(RNXT, RVAL);
-                    _handle_annotations_before_blck_val_scalar();
                     m_evt_handler->begin_map_val_block();
-                    m_evt_handler->set_key_ref(ref);
+                    _handle_keyref(ref);
                     _set_indentation(startindent);
                     // keep going in RVAL
                     addrem_flags(RVAL, RNXT);
@@ -6982,8 +6997,7 @@ mapblck_start:
                 else
                 {
                     _c4dbgp("mapblck[RVAL]: was val ref");
-                    _handle_annotations_before_blck_val_scalar();
-                    m_evt_handler->set_val_ref(ref);
+                    _handle_valref(ref);
                     addrem_flags(RNXT, RVAL);
                 }
             }
@@ -7420,15 +7434,13 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
         if(!_maybe_scan_following_colon())
         {
             _c4dbgp("mapblck[QMRK]: set ref as key");
-            _handle_annotations_before_blck_key_scalar();
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
         }
         else
         {
             _c4dbgp("mapblck[QMRK]: start new block map as key (!), set ref as key");
-            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->begin_map_key_block();
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
             _set_indentation(startindent);
             // keep the child state on RVAL
             addrem_flags(RVAL, RKCL|QMRK);
@@ -7962,8 +7974,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         if(!_maybe_scan_following_colon())
         {
             _c4dbgp("runk: set val ref");
-            _handle_annotations_before_blck_val_scalar();
-            m_evt_handler->set_val_ref(ref);
+            _handle_valref(ref);
         }
         else
         {
@@ -7972,8 +7983,7 @@ void ParseEngine<EventHandler>::_handle_unk()
             const size_t startline = m_evt_handler->m_curr->pos.line; // save
             _handle_annotations_before_start_mapblck(startline);
             m_evt_handler->begin_map_val_block();
-            _handle_annotations_and_indentation_after_start_mapblck(startindent, startline);
-            m_evt_handler->set_key_ref(ref);
+            _handle_keyref(ref);
             _maybe_skip_whitespace_tokens();
             _set_indentation(0);
             addrem_flags(RMAP|RBLCK|RVAL, RTOP|RUNK|RDOC);
@@ -8262,8 +8272,7 @@ C4_COLD void ParseEngine<EventHandler>::_handle_usty()
                 add_flags(RNXT);
                 _handle_annotations_before_start_mapblck(startline);
                 m_evt_handler->_push();
-                _handle_annotations_and_indentation_after_start_mapblck(startindent, startline);
-                m_evt_handler->set_key_ref(ref);
+                _handle_keyref(ref);
                 _maybe_skip_whitespace_tokens();
                 _set_indentation(startindent);
                 addrem_flags(RMAP|RBLCK|RVAL, RNXT|USTY);
@@ -8445,8 +8454,7 @@ C4_COLD void ParseEngine<EventHandler>::_handle_usty()
             if(!_maybe_scan_following_colon())
             {
                 _c4dbgp("usty[UNK]: set val ref");
-                _handle_annotations_before_blck_val_scalar();
-                m_evt_handler->set_val_ref(ref);
+                _handle_valref(ref);
             }
             else
             {
@@ -8455,8 +8463,7 @@ C4_COLD void ParseEngine<EventHandler>::_handle_usty()
                 add_flags(RNXT);
                 _handle_annotations_before_start_mapblck(startline);
                 m_evt_handler->begin_map_val_block();
-                _handle_annotations_and_indentation_after_start_mapblck(startindent, startline);
-                m_evt_handler->set_key_ref(ref);
+                _handle_keyref(ref);
                 _maybe_skip_whitespace_tokens();
                 _set_indentation(startindent);
                 addrem_flags(RMAP|RBLCK|RVAL, RNXT|USTY);

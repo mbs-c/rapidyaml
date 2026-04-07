@@ -661,6 +661,8 @@ private:
     void _handle_annotations_before_start_mapblck_as_key();
     void _handle_annotations_and_indentation_after_start_mapblck(size_t key_indentation, size_t key_line);
     size_t _select_indentation_from_annotations(size_t val_indentation, size_t val_line);
+    void _handle_keyref(csubstr alias);
+    void _handle_valref(csubstr alias);
     void _handle_directive(csubstr rem);
     bool _handle_bom();
     void _handle_bom(Encoding_e enc);
