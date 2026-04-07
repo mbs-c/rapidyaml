@@ -1,4 +1,26 @@
-- Ensure parse errors for invalid YAML cases:
+- Fix parsing of **valid** YAML corner cases:
+  - flow tags/anchors with omitted plain scalar ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    # ... likewise for !tag
+    - [&anchor,&anchor]
+    - {&anchor,&anchor}
+    - [&anchor :,&anchor :]
+    - {&anchor :,&anchor :}
+    - [: &anchor,: &anchor]
+    - {: &anchor,: &anchor}
+    ```
+  - flow tags/anchors terminating with `:` (the colon is part of the tag/anchor)([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    # ... likewise for !tag:
+    - [&anchor:,&anchor:]
+    - {&anchor:,&anchor:}
+    - [&anchor: :,&anchor: :]
+    - {&anchor: :,&anchor: :}
+    - [: &anchor:,: &anchor:]
+    - {: &anchor:,: &anchor:}
+    ```
+-----
+- Ensure parse errors for **invalid** YAML cases, and improve reported location:
   - colon on newline at top level ([PR#585](https://github.com/biojppm/rapidyaml/pull/585)):
     ```yaml
     scalar
@@ -59,9 +81,19 @@
     - - - [
         a  # now this is a parse error
          ]
+    - - - [
+         a  # this is ok
+         ]
     ```
   - single/double-quoted scalars now enforce the contextual parent indentation ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
     - - - "a
         b"  # now this is a parse error
+    ```
+  - plain scalars in block mode starting with `,` ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    all invalid:
+      - , foo
+      - ,foo
+      - ,
     ```

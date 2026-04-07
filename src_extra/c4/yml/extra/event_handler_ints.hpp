@@ -181,9 +181,10 @@ struct EventHandlerIntsState : public c4::yml::ParserState
 
 
 /** A parser event handler that creates a compact representation of
- * the YAML tree in a buffer of integers (see @ref ievt::EventFlags)
- * containing masks (to represent events) and offset+length (to
- * represent strings in the source buffer).
+ * the YAML tree in a contiguous buffer of integers. The integers are
+ * @ref ievt::EventFlags containing masks (to represent events),
+ * interleaved with offset+length (to represent strings in the source
+ * buffer).
  *
  * This is meant for use by other programming languages, and supports
  * container keys (unlike the ryml tree). It parses faster than the ryml
@@ -1208,12 +1209,12 @@ public:
         return C4_LIKELY(m_arena_pos <= m_arena.len) ? m_arena.sub(m_arena_pos) : m_arena.last(0);
     }
 
-    /** this may fail, in which case a an empty string is returned */
+    /** this may fail, in which case an empty string is returned */
     substr alloc_arena(size_t len)
     {
         substr s = arena_rem();
         if(C4_LIKELY(len <= s.len))
-            s = s.first(len);
+            s.len = len;
         else
             s.str = nullptr;
         m_arena_pos += len;

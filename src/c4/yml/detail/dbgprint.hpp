@@ -37,7 +37,7 @@
 
 
 //-----------------------------------------------------------------------------
-// implementation
+// implementation (only with RYML_DBG)
 
 #include <cstdio>
 
