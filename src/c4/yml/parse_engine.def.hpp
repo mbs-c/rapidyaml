@@ -4511,7 +4511,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck(size_t 
     }
     else if(m_pending_tags.num_entries == 1)
     {
-        _c4dbgpf("1 tag. line={}, curr={}", m_pending_tags.annotations[0].line);
+        _c4dbgpf("1 tag. line={}, curr={}", m_pending_tags.annotations[0].line, current_line);
         if(m_pending_tags.annotations[0].line < current_line)
         {
             _c4dbgp("...tag is for the map. setting it.");
@@ -4527,7 +4527,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck(size_t 
     }
     else if(m_pending_anchors.num_entries == 1)
     {
-        _c4dbgpf("1 anchor. line={}, curr={}", m_pending_anchors.annotations[0].line);
+        _c4dbgpf("1 anchor. line={}, curr={}", m_pending_anchors.annotations[0].line, current_line);
         if(m_pending_anchors.annotations[0].line < current_line)
         {
             _c4dbgp("...anchor is for the map. setting it.");
@@ -4541,13 +4541,37 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck_as_key()
 {
     _c4dbgp("annotations_before_start_mapblck_as_key");
-    if(m_pending_tags.num_entries == 2)
+    switch(m_pending_tags.num_entries)
     {
+    case 1u:
+        _c4dbgpf("annotations_after_start_mapblck_as_key: 1 tag={} line={} currline=", m_pending_tags.annotations[0].str, m_pending_tags.annotations[0].line, m_evt_handler->m_curr->pos.line);
+        if(m_pending_tags.annotations[0].line != m_evt_handler->m_curr->pos.line)
+        {
+            _c4dbgp("annotations_after_start_mapblck_as_key: is map tag");
+            m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+            _clear_annotations(&m_pending_tags);
+        }
+        break;
+    case 2u:
+        _c4dbgpf("annotations_after_start_mapblck_as_key: 2 tags: {} -> {}", m_pending_tags.annotations[0].str, m_pending_tags.annotations[1].str);
         m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+        break;
     }
-    if(m_pending_anchors.num_entries == 2)
+    switch(m_pending_anchors.num_entries)
     {
+    case 1u:
+        _c4dbgpf("annotations_after_start_mapblck_as_key: 1 anchor={} line={} currline=", m_pending_anchors.annotations[0].str, m_pending_anchors.annotations[0].line, m_evt_handler->m_curr->pos.line);
+        if(m_pending_anchors.annotations[0].line != m_evt_handler->m_curr->pos.line)
+        {
+            _c4dbgp("annotations_after_start_mapblck_as_key: is map anchor");
+            m_evt_handler->set_key_anchor(m_pending_anchors.annotations[0].str);
+            _clear_annotations(&m_pending_anchors);
+        }
+        break;
+    case 2u:
+        _c4dbgpf("annotations_after_start_mapblck_as_key: 2 anchors: {} -> {}", m_pending_anchors.annotations[0].str, m_pending_anchors.annotations[1].str);
         m_evt_handler->set_key_anchor(m_pending_anchors.annotations[0].str);
+        break;
     }
 }
 
@@ -4563,10 +4587,12 @@ void ParseEngine<EventHandler>::_handle_annotations_and_indentation_after_start_
         switch(m_pending_tags.num_entries)
         {
         case 1u:
+            _c4dbgpf("annotations_after_start_mapblck: 1 tag: {}", m_pending_tags.annotations[0].str);
             m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
             break;
         case 2u:
+            _c4dbgpf("annotations_after_start_mapblck: 2 tags: {} -> {}", m_pending_tags.annotations[0].str, m_pending_tags.annotations[1].str);
             m_evt_handler->set_key_tag(m_pending_tags.annotations[1].str);
             _clear_annotations(&m_pending_tags);
             break;
@@ -4574,10 +4600,12 @@ void ParseEngine<EventHandler>::_handle_annotations_and_indentation_after_start_
         switch(m_pending_anchors.num_entries)
         {
         case 1u:
+            _c4dbgpf("annotations_after_start_mapblck: 1 anchors: {} -> {}", m_pending_anchors.annotations[0].str);
             m_evt_handler->set_key_anchor(m_pending_anchors.annotations[0].str);
             _clear_annotations(&m_pending_anchors);
             break;
         case 2u:
+            _c4dbgpf("annotations_after_start_mapblck: 2 anchors: {} -> {}", m_pending_anchors.annotations[0].str, m_pending_anchors.annotations[1].str);
             m_evt_handler->set_key_anchor(m_pending_anchors.annotations[1].str);
             _clear_annotations(&m_pending_anchors);
             break;
@@ -7281,37 +7309,54 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
     //
     if(m_evt_handler->m_curr->at_line_beginning())
     {
+        _c4dbgpf("mapblck[QMRK]: at line beginning. ind={} indref={}", m_evt_handler->m_curr->line_contents.indentation, m_evt_handler->m_curr->indref);
         _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_curr->line_contents.indentation != npos, m_evt_handler->m_curr->pos);
-        if(m_evt_handler->m_curr->indentation_eq())
+        if(m_evt_handler->m_curr->indentation_eq_extra())
         {
-            _c4dbgpf("mapblck[QMRK]: skip {} from indref", m_evt_handler->m_curr->indref);
-            _line_progressed(m_evt_handler->m_curr->indref);
+            _c4dbgpf("mapblck[QMRK]: skip {} from indref", m_evt_handler->m_curr->indref + 1);
+            _line_progressed(m_evt_handler->m_curr->indref + 1);
             if(!m_evt_handler->m_curr->line_contents.rem.len)
                 return true; // go again
         }
-        else if(m_evt_handler->m_curr->indentation_lt())
-        {
-            _c4dbgp("mapblck[QMRK]: smaller indentation!");
-            _handle_indentation_pop_from_block_map();
-            _line_progressed(m_evt_handler->m_curr->line_contents.indentation);
-            if(has_all(RMAP|RBLCK))
-            {
-                _c4dbgp("mapblck[QMRK]: still mapblck!");
-                return true; // go again
-            }
-            else
-            {
-                _c4dbgp("mapblck[QMRK]: no longer mapblck!");
-                return false; // finish mapblck
-            }
-        }
         // indentation can be larger in QMRK state
-        else
+        else if(m_evt_handler->m_curr->indentation_gt_extra())
         {
             _c4dbgp("mapblck[QMRK]: larger indentation !");
             _line_progressed(m_evt_handler->m_curr->line_contents.indentation);
             if(!m_evt_handler->m_curr->line_contents.rem.len)
                 return true; // go again
+        }
+        else
+        {
+            _c4dbgp("mapblck[QMRK]: smaller indentation!");
+            _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_curr->indentation_lt_extra(), m_evt_handler->m_curr->pos);
+            _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_curr->line_contents.rem.len > 0, m_evt_handler->m_curr->pos);
+            if(m_evt_handler->m_curr->indentation_eq()
+               // defend against docs or indentless seqs
+               && m_evt_handler->m_curr->line_contents.rem.str[0] != '-')
+            {
+                _c4dbgp("mapblck[QMRK]: QMRK finished!");
+                _handle_annotations_before_blck_key_scalar();
+                m_evt_handler->set_key_scalar_plain_empty();
+                addrem_flags(RKCL, QMRK);
+                return true; // go again
+            }
+            else if(m_evt_handler->m_curr->indentation_lt())
+            {
+                _c4dbgp("mapblck[QMRK]: indentation pop!");
+                _handle_indentation_pop_from_block_map();
+                _line_progressed(m_evt_handler->m_curr->line_contents.indentation);
+                if(has_all(RMAP|RBLCK))
+                {
+                    _c4dbgp("mapblck[QMRK]: still mapblck!");
+                    return true; // go again
+                }
+                else
+                {
+                    _c4dbgp("mapblck[QMRK]: no longer mapblck!");
+                    return false; // finish mapblck
+                }
+            }
         }
     }
     //
@@ -7480,8 +7525,7 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
     else if(first == '-')
     {
         _c4dbgp("mapblck[QMRK]: maybe doc?");
-        csubstr rs = m_evt_handler->m_curr->line_contents.rem.sub(1);
-        if(rs == "--" || rs.begins_with("-- "))
+        if(_is_doc_begin_token(m_evt_handler->m_curr->line_contents.rem))
         {
             _c4dbgp("mapblck[QMRK]: end+start doc");
             _start_doc_suddenly();
@@ -7524,8 +7568,8 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
     }
     else if(first == '?')
     {
-        _c4dbgp("mapblck[QMRK]: another QMRK '?'");
-        if(m_evt_handler->m_curr->indentation_eq())
+        _c4dbgpf("mapblck[QMRK]: another QMRK '?'. ind={} indref={}", startindent, m_evt_handler->m_curr->indref);
+        if(startindent == m_evt_handler->m_curr->indref)
         {
             _c4dbgp("mapblck[QMRK]: ? indent eq - prev ? was for an empty keyval");
             _handle_annotations_before_blck_key_scalar();
@@ -7535,7 +7579,7 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
         }
         else
         {
-            _RYML_ASSERT_PARSE_(callbacks(), m_evt_handler->m_curr->indentation_gt(), m_evt_handler->m_curr->pos);
+            _RYML_ASSERT_PARSE_(callbacks(), startindent > m_evt_handler->m_curr->indref, m_evt_handler->m_curr->pos);
             _c4dbgp("mapblck[QMRK]: ? indent gt - start child mapblck (!)");
             addrem_flags(RKCL, RKEY|QMRK);
             _handle_annotations_before_blck_key_scalar();

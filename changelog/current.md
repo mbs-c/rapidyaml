@@ -1,4 +1,12 @@
 - Fix parsing of **valid** YAML corner cases:
+  - Add missing an
+  - Ambiguity of tags/anchors in ? mode ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    ? &mapanchor
+      key: val
+    ?
+      &keyanchor key: val
+    ```
   - flow tags/anchors with omitted plain scalar ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
     # ... likewise for !tag
@@ -8,6 +16,8 @@
     - {&anchor :,&anchor :}
     - [: &anchor,: &anchor]
     - {: &anchor,: &anchor}
+    ---
+    ? anchor
     ```
   - flow tags/anchors terminating with `:` (the colon is part of the tag/anchor)([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
@@ -18,6 +28,8 @@
     - {&anchor: :,&anchor: :}
     - [: &anchor:,: &anchor:]
     - {: &anchor:,: &anchor:}
+    ---
+    ? anchor
     ```
 -----
 - Ensure parse errors for **invalid** YAML cases, and improve reported location:
@@ -96,4 +108,10 @@
       - , foo
       - ,foo
       - ,
+    ```
+  - references with anchors or tags ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    all invalid:
+      - &anchor *ref
+      - !tag *ref
     ```
