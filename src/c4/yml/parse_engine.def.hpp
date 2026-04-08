@@ -5388,7 +5388,7 @@ seqflow_start:
         {
             csubstr ref = _scan_ref_seq();
             _c4dbgpf("seqflow[RVAL]: ref! {}", _prs(ref));
-            m_evt_handler->set_val_ref(ref);
+            _handle_valref(ref);
             addrem_flags(RNXT, RVAL);
         }
         else if(first == '&')
@@ -5712,6 +5712,7 @@ mapflow_start:
             _c4dbgp("mapflow[RVAL]: scanning single-quoted scalar");
             sc = _scan_scalar_squot();
             csubstr maybe_filtered = _maybe_filter_val_scalar_squot(sc);
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->set_val_scalar_squoted(maybe_filtered);
             addrem_flags(RNXT, RVAL);
         }
@@ -5720,6 +5721,7 @@ mapflow_start:
             _c4dbgp("mapflow[RVAL]: scanning double-quoted scalar");
             sc = _scan_scalar_dquot();
             csubstr maybe_filtered = _maybe_filter_val_scalar_dquot(sc);
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->set_val_scalar_dquoted(maybe_filtered);
             addrem_flags(RNXT, RVAL);
         }
@@ -5728,6 +5730,7 @@ mapflow_start:
         {
             _c4dbgp("mapflow[RVAL]: plain scalar.");
             csubstr maybe_filtered = _maybe_filter_val_scalar_plain(sc, m_evt_handler->m_curr->indref);
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->set_val_scalar_plain(maybe_filtered);
             addrem_flags(RNXT, RVAL);
         }
@@ -5735,6 +5738,7 @@ mapflow_start:
         {
             _c4dbgp("mapflow[RVAL]: start val seqflow");
             addrem_flags(RNXT, RVAL);
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->begin_seq_val_flow();
             _set_indentation(m_evt_handler->m_parent->indref);
             addrem_flags(RSEQ|RVAL, RMAP|RNXT);
@@ -5745,6 +5749,7 @@ mapflow_start:
         {
             _c4dbgp("mapflow[RVAL]: start val mapflow");
             addrem_flags(RNXT, RVAL);
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->begin_map_val_flow();
             _set_indentation(m_evt_handler->m_parent->indref);
             addrem_flags(RKEY, RNXT);
@@ -5754,6 +5759,7 @@ mapflow_start:
         else if(first == '}')
         {
             _c4dbgp("mapflow[RVAL]: end!");
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->set_val_scalar_plain_empty();
             _line_progressed(1);
             _end_map_flow();
@@ -5762,6 +5768,7 @@ mapflow_start:
         else if(first == ',')
         {
             _c4dbgp("mapflow[RVAL]: empty val!");
+            _handle_annotations_before_blck_val_scalar();
             m_evt_handler->set_val_scalar_plain_empty();
             addrem_flags(RNXT, RVAL);
             // keep going in this function
@@ -5777,13 +5784,13 @@ mapflow_start:
         {
             csubstr anchor = _scan_anchor();
             _c4dbgpf("mapflow[RVAL]: key anchor! {}", _prs(anchor));
-            m_evt_handler->set_val_anchor(anchor);
+            _add_annotation(&m_pending_anchors, anchor);
         }
         else if(first == '!')
         {
             csubstr tag = _scan_tag();
             _c4dbgpf("mapflow[RVAL]: tag! {}", _prs(tag));
-            m_evt_handler->set_val_tag(tag);
+            _add_annotation(&m_pending_tags, tag);
         }
         else
         {
@@ -5834,6 +5841,7 @@ mapflow_start:
             _c4dbgp("mapflow[QMRK]: scanning single-quoted scalar");
             sc = _scan_scalar_squot();
             csubstr maybe_filtered = _maybe_filter_key_scalar_squot(sc);
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_squoted(maybe_filtered);
             addrem_flags(RKCL, QMRK);
         }
@@ -5842,6 +5850,7 @@ mapflow_start:
             _c4dbgp("mapflow[QMRK]: scanning double-quoted scalar");
             sc = _scan_scalar_dquot();
             csubstr maybe_filtered = _maybe_filter_key_scalar_dquot(sc);
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_dquoted(maybe_filtered);
             addrem_flags(RKCL, QMRK);
         }
@@ -5850,12 +5859,14 @@ mapflow_start:
         {
             _c4dbgp("mapflow[QMRK]: plain scalar");
             csubstr maybe_filtered = _maybe_filter_key_scalar_plain(sc, m_evt_handler->m_curr->indref);
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_plain(maybe_filtered);
             addrem_flags(RKCL, QMRK);
         }
         else if(first == ':')
         {
             _c4dbgp("mapflow[QMRK]: setting empty key");
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_plain_empty();
             addrem_flags(RVAL, QMRK);
             _line_progressed(1);
@@ -5864,6 +5875,7 @@ mapflow_start:
         else if(first == '}') // this happens on a trailing comma like ", }"
         {
             _c4dbgp("mapflow[QMRK]: end!");
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_plain_empty();
             m_evt_handler->set_val_scalar_plain_empty();
             _end_map_flow();
@@ -5873,6 +5885,7 @@ mapflow_start:
         else if(first == ',')
         {
             _c4dbgp("mapflow[QMRK]: empty key+val!");
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_plain_empty();
             m_evt_handler->set_val_scalar_plain_empty();
             addrem_flags(RNXT, QMRK);
@@ -5881,7 +5894,7 @@ mapflow_start:
         {
             csubstr anchor = _scan_anchor();
             _c4dbgpf("mapflow[QMRK]: key anchor! {}", _prs(anchor));
-            m_evt_handler->set_key_anchor(anchor);
+            _add_annotation(&m_pending_anchors, anchor);
         }
         else if(first == '*')
         {
@@ -5897,6 +5910,7 @@ mapflow_start:
             // able to handle it.
             _c4dbgp("mapflow[QMRK]: start child seqflow (!)");
             addrem_flags(RKCL, QMRK);
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->begin_seq_key_flow();
             addrem_flags(RSEQ|RVAL, RMAP|RKCL);
             _set_indentation(m_evt_handler->m_parent->indref);
@@ -5910,6 +5924,7 @@ mapflow_start:
             // able to handle it.
             _c4dbgp("mapflow[QMRK]: start child mapflow (!)");
             addrem_flags(RKCL, QMRK);
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->begin_map_key_flow();
             _set_indentation(m_evt_handler->m_parent->indref);
             addrem_flags(RKEY, RKCL);
@@ -5920,7 +5935,7 @@ mapflow_start:
         {
             csubstr tag = _scan_tag();
             _c4dbgpf("mapflow[QMRK]: tag! {}", _prs(tag));
-            m_evt_handler->set_key_tag(tag);
+            _add_annotation(&m_pending_tags, tag);
         }
         else
         {
@@ -6988,6 +7003,7 @@ mapblck_start:
                 {
                     _c4dbgp("mapblck[RVAL]: start child map, block");
                     addrem_flags(RNXT, RVAL);
+                    _handle_annotations_before_blck_val_scalar();
                     m_evt_handler->begin_map_val_block();
                     _handle_keyref(ref);
                     _set_indentation(startindent);
@@ -7439,7 +7455,9 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
         else
         {
             _c4dbgp("mapblck[QMRK]: start new block map as key (!), set ref as key");
+            _handle_annotations_before_start_mapblck_as_key();
             m_evt_handler->begin_map_key_block();
+            _handle_annotations_and_indentation_after_start_mapblck(startindent, startline);
             _handle_keyref(ref);
             _set_indentation(startindent);
             // keep the child state on RVAL
@@ -7486,6 +7504,7 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
     {
         _c4dbgp("mapblck[QMRK]: start child seqflow (!)");
         addrem_flags(RKCL, QMRK);
+        _handle_annotations_before_blck_key_scalar();
         m_evt_handler->begin_seq_key_flow();
         addrem_flags(RVAL|RSEQ|RFLOW, RMAP|RKCL|RBLCK);
         _set_indentation(m_evt_handler->m_parent->indref + 1);
@@ -7496,6 +7515,7 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
     {
         _c4dbgp("mapblck[QMRK]: start child mapflow (!)");
         addrem_flags(RKCL, QMRK);
+        _handle_annotations_before_blck_key_scalar();
         m_evt_handler->begin_map_key_flow();
         addrem_flags(RKEY|RFLOW, RVAL|RKCL|RBLCK);
         _set_indentation(m_evt_handler->m_parent->indref + 1);
@@ -7508,6 +7528,7 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
         if(m_evt_handler->m_curr->indentation_eq())
         {
             _c4dbgp("mapblck[QMRK]: ? indent eq - prev ? was for an empty keyval");
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->set_key_scalar_plain_empty();
             m_evt_handler->set_val_scalar_plain_empty();
             m_evt_handler->add_sibling();
@@ -7517,7 +7538,7 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
             _RYML_ASSERT_PARSE_(callbacks(), m_evt_handler->m_curr->indentation_gt(), m_evt_handler->m_curr->pos);
             _c4dbgp("mapblck[QMRK]: ? indent gt - start child mapblck (!)");
             addrem_flags(RKCL, RKEY|QMRK);
-            rem_flags(RKEY);
+            _handle_annotations_before_blck_key_scalar();
             m_evt_handler->begin_map_key_block();
             addrem_flags(RBLCK|QMRK, RVAL|RKCL);
             _set_indentation(startindent);
@@ -7962,7 +7983,6 @@ void ParseEngine<EventHandler>::_handle_unk()
         const size_t line = m_evt_handler->m_curr->pos.line;
         _add_annotation(&m_pending_anchors, anchor, remindent, line);
         _set_indentation(0);
-        m_doc_empty = false;
     }
     else if(first == '*')
     {

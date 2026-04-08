@@ -1085,7 +1085,7 @@ public:
 
     void set_key_anchor(csubstr anchor)
     {
-        _c4dbgpf("{}/{}: set_key_anchor", m_evt_pos, m_evt_size);
+        _c4dbgpf("{}/{}: set_key_anchor: {}", m_evt_pos, m_evt_size, anchor);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, !_has_any_(KEYREF));
         _enable_(c4::yml::KEYANCH);
         if(m_evt_pos + 3 < m_evt_size)
@@ -1098,7 +1098,7 @@ public:
     }
     void set_val_anchor(csubstr anchor)
     {
-        _c4dbgpf("{}/{}: set_val_anchor", m_evt_pos, m_evt_size);
+        _c4dbgpf("{}/{}: set_val_anchor: {}", m_evt_pos, m_evt_size, anchor);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, !_has_any_(VALREF));
         _enable_(c4::yml::VALANCH);
         if(m_evt_pos + 3 < m_evt_size)
@@ -1112,6 +1112,7 @@ public:
 
     void set_key_ref(csubstr ref)
     {
+        _c4dbgpf("{}/{}: set_key_ref: {}", m_evt_pos, m_evt_size, ref);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, ref.begins_with('*'));
         if(C4_UNLIKELY(_has_any_(KEYANCH)))
             _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "key cannot have both anchor and ref");
@@ -1120,6 +1121,7 @@ public:
     }
     void set_val_ref(csubstr ref)
     {
+        _c4dbgpf("{}/{}: set_val_ref: {}", m_evt_pos, m_evt_size, ref);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, ref.begins_with('*'));
         if(C4_UNLIKELY(_has_any_(VALANCH)))
             _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "val cannot have both anchor and ref");

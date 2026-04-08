@@ -645,7 +645,7 @@ private:
             size_t line;
         };
         Entry annotations[2];
-        size_t num_entries;
+        uint8_t num_entries;
     };
 
     void _handle_colon();
