@@ -43,9 +43,11 @@ jobs:
         - std: 11
           namesfx: 64bit_dbg
           cmk: -DCMAKE_CXX_FLAGS=-m64 -DRYML_DBG=ON
+          halfprocs: 'yes'
         - std: 11
           namesfx: 32bit
           cmk: -DCMAKE_CXX_FLAGS=-m32
+          halfprocs: 'yes'
     env:
       GCC_VERSION: 13
       LCOV_ARGS: -v --ignore-errors mismatch,mismatch --ignore-errors unused,unused
@@ -59,11 +61,11 @@ jobs:
         fetch-depth: 0
     - name: install compiler
       run: |
-        if [[ ${{matrix}} == *"32"* ]] ; then
+        if [[ ${{matrix.namesfx}} == *"32"* ]] ; then
            sudo dpkg --add-architecture i386
         fi
         sudo apt-get update
-        if [[ ${{matrix}} == *"32"* ]] ; then
+        if [[ ${{matrix.namesfx}} == *"32"* ]] ; then
           sudo apt-get install -y \
               linux-libc-dev:i386 \
               libc6:i386 \
@@ -75,8 +77,11 @@ jobs:
             cmake \
             git \
             lcov \
-            g++-$GCC_VERSION \
+            g++-$GCC_VERSION
+        if [[ ${{matrix.namesfx}} == *"32"* ]] ; then
+          sudo apt-get install -y \
             g++-$GCC_VERSION-multilib
+        fi
     - name: show info
       run: source .github/setenv.sh && c4_show_info
     - name: configure
@@ -89,7 +94,15 @@ jobs:
             ${{matrix.cmk}}
     - name: build
       run: |
-        cmake --build build/$BUILD_ID --verbose --target ryml-test-build --parallel
+        numprocs=`nproc`
+        if [ -n "${{matrix.halfprocs}}" ] ; then
+            if (( $numprocs > 1 )) ; then
+                numprocs=$(($numprocs / 2))
+            fi
+        fi
+        export CMAKE_BUILD_PARALLEL_LEVEL=$numprocs
+        cmake --build build/$BUILD_ID --verbose --target ryml-test-build \
+            --parallel $numprocs
     - name: run
       run: |
         export CTEST_PARALLEL_LEVEL=`nproc`

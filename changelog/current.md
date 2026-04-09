@@ -1,5 +1,5 @@
 - Fix parsing of **valid** YAML corner cases:
-  - Add missing an
+  - Ensure tags/anchors are not omitted. This was happening in some flow maps ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)).
   - Ambiguity of tags/anchors in ? mode ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
     ? &mapanchor
@@ -39,7 +39,7 @@
       ? - d
     ```
 -----
-- Ensure parse errors for **invalid** YAML cases, and improve reported location:
+- Ensure parse errors for **invalid** YAML cases, and improve reported error location:
   - colon on newline at top level ([PR#585](https://github.com/biojppm/rapidyaml/pull/585)):
     ```yaml
     scalar
@@ -83,7 +83,7 @@
     [-
      ]
     ```
-  - doc start/begin tokens at zero indentation in seq flow ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+  - doc start/begin tokens at zero indentation in seq flow and quoted scalars ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
     [
     ---,
@@ -94,6 +94,16 @@
     ...\t,
     # etc
     ]
+    ---
+    "
+    --- # error as well
+    ... # error as well
+    "
+    ---
+    '
+    --- # error as well
+    ... # error as well
+    '
     ```
   - nested flow containers now enforce the contextual parent indentation ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
@@ -108,6 +118,8 @@
     ```yaml
     - - - "a
         b"  # now this is a parse error
+    - - - "a
+         b"  # this is ok
     ```
   - plain scalars in block mode starting with `,` ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
@@ -122,3 +134,20 @@
       - &anchor *ref
       - !tag *ref
     ```
+  - references with extra tokens ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    %YAML 1.2 this is wrong
+    ```
+  - multiline implicit keys are invalid ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    multiline
+        plain: invalid
+    'multiline
+        squoted': invalid
+    "multiline
+        dquoted": invalid
+    [multiline,
+        seq]: invalid
+    {multiline:
+        map}: invalid
+   ```
