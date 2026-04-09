@@ -440,6 +440,8 @@ private:
     bool    _scan_scalar_seq_json(ScannedScalar *C4_RESTRICT sc);
     bool    _scan_scalar_plain_unk(ScannedScalar *C4_RESTRICT sc);
     bool    _is_valid_start_scalar_plain_flow(csubstr s);
+    bool    _is_valid_start_scalar_plain_flow_check_block_token(csubstr s);
+    bool    _is_valid_start_scalar_plain_flow_check_qmrk(csubstr s);
     bool    _scan_scalar_plain_handle_newline(csubstr s, size_t offs);
     void    _check_valid_newline_in_quoted_scalar();
 
@@ -493,7 +495,6 @@ private:
     void  _handle_flow_skip_whitespace();
     void  _handle_flow_line_beginning();
 
-    void   _handle_block_line_beginning(bool extra);
     size_t _handle_block_skip_leading_whitespace();
     C4_ALWAYS_INLINE
     size_t _handle_block_get_whitespace_mark() const noexcept { return m_evt_handler->m_curr->pos.offset; }
@@ -535,10 +536,6 @@ private:
     void _skip_comment();
     void _maybe_skip_whitespace_tokens();
     void _maybe_skipchars(char c);
-    #ifdef RYML_NO_COVERAGE__TO_BE_DELETED
-    void _maybe_skipchars_up_to(char c, size_t max_to_skip);
-    #endif
-    void _skipchars(char);
     template<size_t N>
     void _skipchars(const char (&chars)[N]);
     bool _maybe_scan_following_colon() noexcept;
@@ -565,6 +562,7 @@ public:
     template<class FilterProcessor> void   _filter_ws_skip_trailing(FilterProcessor &C4_RESTRICT proc);
 
     template<class FilterProcessor> void   _filter_dquoted_backslash(FilterProcessor &C4_RESTRICT proc);
+    template<class FilterProcessor> void   _filter_dquoted_backslash_decode(FilterProcessor &C4_RESTRICT proc, size_t sz);
 
     template<class FilterProcessor> void   _filter_chomp(FilterProcessor &C4_RESTRICT proc, BlockChomp_e chomp, size_t indentation);
     template<class FilterProcessor> size_t _handle_all_whitespace(FilterProcessor &C4_RESTRICT proc, BlockChomp_e chomp);
@@ -654,7 +652,6 @@ private:
     C4_ALWAYS_INLINE void _clear_annotations(Annotation *C4_RESTRICT dst) noexcept { dst->num_entries = 0; }
     bool _annotations_require_key_container() const;
     bool _handle_annotations_before_unexpected_flow_token_rkey();
-    bool _handle_annotations_before_unexpected_flow_token_rval();
     void _handle_annotations_before_blck_key_scalar();
     void _handle_annotations_before_blck_val_scalar();
     void _handle_annotations_before_start_mapblck(size_t current_line);
