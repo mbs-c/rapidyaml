@@ -19,7 +19,7 @@
     ---
     ? anchor
     ```
-  - flow tags/anchors terminating with `:` (the colon is part of the tag/anchor)([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+  - flow tags/anchors terminating with `:` (the colon is part of the tag/anchor) ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
     # ... likewise for !tag:
     - [&anchor:,&anchor:]
@@ -30,6 +30,13 @@
     - {: &anchor:,: &anchor:}
     ---
     ? anchor
+    ```
+  - Fix corner cases of explicit keys now allow same-line containers ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+    ```yaml
+    ? - a     # same-line container key now parses successfully. both seqs and maps
+    : - b     # same-line container val now parses successfully. both seqs and maps
+    ? ? - c   # nested explicit keys were also fixed
+      ? - d
     ```
 -----
 - Ensure parse errors for **invalid** YAML cases, and improve reported location:

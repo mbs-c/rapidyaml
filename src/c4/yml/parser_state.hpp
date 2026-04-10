@@ -22,10 +22,10 @@ typedef enum : ParserFlag_t {
     RFLOW = 0x01 <<  4,   ///< reading is inside explicit flow chars: [] or {}
     RBLCK = 0x01 <<  5,   ///< reading in block mode
     QMRK = 0x01 <<  6,   ///< reading an explicit key (`? key`)
-    RKEY = 0x01 <<  7,   ///< reading a scalar as key
-    RVAL = 0x01 <<  9,   ///< reading a scalar as val
+    RKEY = 0x01 <<  7,   ///< reading a key
+    RVAL = 0x01 <<  9,   ///< reading a val
     RKCL = 0x01 <<  8,   ///< reading the key colon (ie the : after the key in the map)
-    RNXT = 0x01 << 10,   ///< read next val or keyval
+    RNXT = 0x01 << 10,   ///< read next sibling
     SSCL = 0x01 << 11,   ///< there's a stored scalar
     QSCL = 0x01 << 12,   ///< stored scalar was quoted
     RSET = 0x01 << 13,   ///< the (implicit) map being read is a !!set. @see https://yaml.org/type/set.html
@@ -157,6 +157,11 @@ public:
     C4_ALWAYS_INLINE bool at_line_beginning() const noexcept
     {
         return line_contents.rem.str == line_contents.full.str;
+    }
+    C4_ALWAYS_INLINE bool at_first_token() const noexcept
+    {
+        _RYML_ASSERT_BASIC(line_contents.indentation != npos);
+        return pos.col == line_contents.indentation + 1;
     }
     C4_ALWAYS_INLINE bool indentation_eq() const noexcept
     {

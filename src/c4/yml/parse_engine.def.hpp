@@ -4178,11 +4178,12 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_handle_colon()
 {
     size_t curr = m_evt_handler->m_curr->pos.line;
-    if(m_prev_colon != npos)
+    if(C4_UNLIKELY(m_prev_colon != npos && curr == m_prev_colon))
     {
-        if(curr == m_prev_colon)
-            _c4err("two colons on same line");
+        _c4dbgpf("colon: prevline={} currline={}", m_prev_colon, curr);
+        _c4err("two colons on same line");
     }
+    _c4dbgpf("colon: set prevline={}->{}", m_prev_colon, curr);
     m_prev_colon = curr;
 }
 
@@ -6087,7 +6088,17 @@ seqblck_start:
             addrem_flags(RMAP|QMRK, RSEQ|RNXT);
             _set_indentation(startindent);
             _line_progressed(1);
-            _maybe_skip_whitespace_tokens();
+            _maybe_skipchars(' ');
+            if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+            {
+                _c4dbgp("seqblck[RVAL]: seqblck starts after ?");
+                addrem_flags(RKCL, QMRK);
+                m_evt_handler->begin_seq_key_block();
+                addrem_flags(RSEQ|RVAL, RMAP|RKCL);
+                _save_indentation();
+                _line_progressed(1);
+                _maybe_skipchars(' ');
+            }
             goto seqblck_finish;
         }
         else
@@ -6355,6 +6366,7 @@ mapblck_start:
             addrem_flags(RVAL, RKEY);
             if(!_maybe_scan_following_colon())
                 _c4err("could not find ':' colon after key");
+            _handle_colon();
             _maybe_skip_whitespace_tokens();
         }
         else if(first == '"')
@@ -6367,6 +6379,7 @@ mapblck_start:
             addrem_flags(RVAL, RKEY);
             if(!_maybe_scan_following_colon())
                 _c4err("could not find ':' colon after key");
+            _handle_colon();
             _maybe_skip_whitespace_tokens();
         }
         // block scalars (| and >) can not be used as keys unless they
@@ -6388,6 +6401,7 @@ mapblck_start:
             addrem_flags(RVAL, RKEY);
             if(!_maybe_scan_following_colon())
                 _c4err("could not find ':' colon after key");
+            _handle_colon();
             _maybe_skip_whitespace_tokens();
         }
         else if(first == '?')
@@ -6395,7 +6409,18 @@ mapblck_start:
             _c4dbgp("mapblck[RKEY]: key token!");
             addrem_flags(QMRK, RKEY);
             _line_progressed(1);
-            _maybe_skip_whitespace_tokens();
+            _maybe_skipchars(' ');
+            if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+            {
+                _c4dbgp("mapblck[RKEY]: seqblck starts after ?");
+                addrem_flags(RKCL, QMRK);
+                m_evt_handler->begin_seq_key_block();
+                addrem_flags(RSEQ|RVAL, RMAP|RKCL);
+                _save_indentation();
+                _line_progressed(1);
+                _maybe_skipchars(' ');
+                goto mapblck_finish;
+            }
             goto mapblck_again;
         }
         else if(first == ':')
@@ -6405,6 +6430,7 @@ mapblck_start:
             m_evt_handler->set_key_scalar_plain_empty();
             addrem_flags(RVAL, RKEY);
             _line_progressed(1);
+            _handle_colon();
             _maybe_skip_whitespace_tokens();
         }
         else if(first == '*')
@@ -6415,6 +6441,7 @@ mapblck_start:
             addrem_flags(RVAL, RKEY);
             if(!_maybe_scan_following_colon())
                 _c4err("could not find ':' colon after key");
+            _handle_colon();
             _maybe_skip_whitespace_tokens();
         }
         else if(first == '&')
@@ -6691,7 +6718,8 @@ mapblck_start:
         }
         else if(first == '-')
         {
-            if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+            if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem)
+               && m_evt_handler->m_curr->at_first_token())
             {
                 _c4dbgp("mapblck[RVAL]: start val seqblck");
                 _handle_block_check_leading_tabs(startcol);
@@ -6777,10 +6805,21 @@ mapblck_start:
             addrem_flags(RNXT, RVAL);
             _handle_annotations_before_blck_val_scalar();
             m_evt_handler->begin_map_val_block();
-            addrem_flags(QMRK|RBLCK, RNXT);
+            addrem_flags(QMRK, RNXT);
             _set_indentation(startindent);
             _line_progressed(1);
-            _maybe_skip_whitespace_tokens();
+            _maybe_skipchars(' ');
+            if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+            {
+                _c4dbgp("mapblck[RVAL]: seqblck starts after ?");
+                addrem_flags(RKCL, QMRK);
+                m_evt_handler->begin_seq_key_block();
+                addrem_flags(RSEQ|RVAL, RMAP|RKCL);
+                _save_indentation();
+                _line_progressed(1);
+                _maybe_skipchars(' ');
+                goto mapblck_finish;
+            }
             goto mapblck_again;
         }
         else if(first == ':')
@@ -7137,14 +7176,8 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
     }
     else if(first == '-')
     {
-        _c4dbgp("mapblck[QMRK]: maybe doc?");
-        if(_is_doc_begin_token(m_evt_handler->m_curr->line_contents.rem))
-        {
-            _c4dbgp("mapblck[QMRK]: end+start doc");
-            _start_doc_suddenly();
-            _line_progressed(3);
-        }
-        else
+        _c4dbgp("mapblck[QMRK]: maybe seq or doc?");
+        if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
         {
             _c4dbgp("mapblck[QMRK]: start child seqblck (!)");
             addrem_flags(RKCL, QMRK);
@@ -7153,6 +7186,13 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
             addrem_flags(RVAL|RSEQ, RMAP|RKCL);
             _set_indentation(startindent);
             _line_progressed(1);
+        }
+        else
+        {
+            _c4dbgp("mapblck[QMRK]: end+start doc");
+            _c4assert(_is_doc_begin_token(m_evt_handler->m_curr->line_contents.rem));
+            _start_doc_suddenly();
+            _line_progressed(3);
         }
         _maybe_skip_whitespace_tokens();
         return false; // finish mapblck
@@ -7184,14 +7224,25 @@ bool ParseEngine<EventHandler>::_handle_map_block_qmrk()
         _c4dbgpf("mapblck[QMRK]: another QMRK '?'. ind={} indref={}", startindent, m_evt_handler->m_curr->indref);
         _RYML_ASSERT_PARSE_(callbacks(), startindent > m_evt_handler->m_curr->indref, m_evt_handler->m_curr->pos);
         _c4dbgp("mapblck[QMRK]: ? indent gt - start child mapblck (!)");
-        addrem_flags(RKCL, RKEY|QMRK);
+        addrem_flags(RKCL, QMRK);
         _handle_annotations_before_blck_key_scalar();
         m_evt_handler->begin_map_key_block();
-        addrem_flags(RBLCK|QMRK, RVAL|RKCL);
+        addrem_flags(QMRK, RKCL);
         _set_indentation(startindent);
         // indentation_lt() should be handled elsewhere
         _line_progressed(1);
-        _maybe_skip_whitespace_tokens();
+        _maybe_skipchars(' ');
+        if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+        {
+            _c4dbgp("mapblck[RVAL]: seqblck starts after ?");
+            addrem_flags(RKCL, QMRK);
+            m_evt_handler->begin_seq_key_block();
+            addrem_flags(RSEQ|RVAL, RMAP|RKCL);
+            _save_indentation();
+            _line_progressed(1);
+            _maybe_skipchars(' ');
+            return false;
+        }
     }
     else
     {
@@ -7229,9 +7280,29 @@ bool ParseEngine<EventHandler>::_handle_map_block_rkcl()
     if(first == ':')
     {
         _c4dbgp("mapblck[RKCL]: found the colon");
-        addrem_flags(RVAL, RKCL);
         _line_progressed(1);
-        _maybe_skip_whitespace_tokens();
+        _maybe_skipchars(' ');
+        #if defined(__GNUC__) && (__GNUC__ >= 12)                       \
+            && ((C4_WORDSIZE == 4) || defined(C4_CPU_S390_X) || defined(C4_CPU_PPC64))
+        C4_DONT_OPTIMIZE(m_evt_handler->m_curr->line_contents.rem);
+        #endif
+        // sequence is valid after the RKCL ':'
+        if(!_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+        {
+            addrem_flags(RVAL, RKCL);
+            return true; // continue in mapblck
+        }
+        else
+        {
+            _c4dbgp("mapblck[RKCL]: start val seqblck");
+            addrem_flags(RNXT, RKCL);
+            m_evt_handler->begin_seq_val_block();
+            addrem_flags(RSEQ|RVAL, RMAP|RNXT);
+            _save_indentation();
+            _line_progressed(1);
+            _maybe_skipchars(' ');
+            return false; // finish mapblck
+        }
     }
     else if(first == '?')
     {
@@ -7240,7 +7311,18 @@ bool ParseEngine<EventHandler>::_handle_map_block_rkcl()
         m_evt_handler->add_sibling();
         addrem_flags(QMRK, RKCL);
         _line_progressed(1);
-        _maybe_skip_whitespace_tokens();
+        _maybe_skipchars(' ');
+        if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+        {
+            _c4dbgp("mapblck[RKCL]: seqblck starts after ?");
+            addrem_flags(RKCL, QMRK);
+            m_evt_handler->begin_seq_key_block();
+            addrem_flags(RSEQ|RVAL, RMAP|QMRK);
+            _save_indentation();
+            _line_progressed(1);
+            _maybe_skipchars(' ');
+            return false;
+        }
     }
     else if(first == '-')
     {
@@ -7415,26 +7497,26 @@ void ParseEngine<EventHandler>::_handle_unk()
     if(!m_evt_handler->m_curr->line_contents.rem.len)
         return;
 
-    _c4dbgpf("rem is now {}", _prs(m_evt_handler->m_curr->line_contents.rem));
+    _c4dbgpf("runk: rem is now {}", _prs(m_evt_handler->m_curr->line_contents.rem));
 
     if(m_evt_handler->m_curr->line_contents.indentation == 0u && (m_evt_handler->m_curr->at_line_beginning() || (m_bom_len && (m_evt_handler->m_curr->pos.line == m_bom_line))))
     {
-        _c4dbgpf("rtop: zero indent + at line begin. offset={}", m_evt_handler->m_curr->pos.offset);
-        _c4dbgp("check BOM");
+        _c4dbgpf("runk: rtop: zero indent + at line begin. offset={}", m_evt_handler->m_curr->pos.offset);
+        _c4dbgp("runk: check BOM");
         if(_handle_bom())
         {
             m_bom_line = m_evt_handler->m_curr->pos.line;
-            _c4dbgpf("byte order mark! line={} offset={}", m_bom_line, m_evt_handler->m_curr->pos.offset);
+            _c4dbgpf("runk: byte order mark! line={} offset={}", m_bom_line, m_evt_handler->m_curr->pos.offset);
             return;
         }
         const char first = m_evt_handler->m_curr->line_contents.rem.str[0];
-        _c4dbgpf("rtop: first={}", _c4prc(first));
+        _c4dbgpf("runk: rtop: first={}", _c4prc(first));
         if(first == '-')
         {
-            _c4dbgp("rtop: suspecting doc");
+            _c4dbgp("runk: rtop: suspecting doc");
             if(_is_doc_begin_token(m_evt_handler->m_curr->line_contents.rem))
             {
-                _c4dbgp("rtop: begin doc");
+                _c4dbgp("runk: rtop: begin doc");
                 _maybe_end_doc();
                 _begin2_doc_expl();
                 _set_indentation(0);
@@ -7446,17 +7528,17 @@ void ParseEngine<EventHandler>::_handle_unk()
         }
         else if(first == '.')
         {
-            _c4dbgp("rtop: suspecting doc end");
+            _c4dbgp("runk: rtop: suspecting doc end");
             if(_is_doc_end_token(m_evt_handler->m_curr->line_contents.rem))
             {
-                _c4dbgp("rtop: end doc");
+                _c4dbgp("runk: rtop: end doc");
                 if(has_any(RDOC))
                 {
                     _end2_doc_expl();
                 }
                 else
                 {
-                    _c4dbgp("rtop: ignore end doc");
+                    _c4dbgp("runk: rtop: ignore end doc");
                 }
                 addrem_flags(NDOC|RUNK, RDOC);
                 _line_progressed(3u);
@@ -7481,10 +7563,10 @@ void ParseEngine<EventHandler>::_handle_unk()
     size_t remindent = m_evt_handler->m_curr->line_contents.current_col(m_evt_handler->m_curr->line_contents.rem);
     if(m_bom_len)
     {
-        _c4dbgpf("prev BOMlen={}", m_bom_len);
+        _c4dbgpf("runk: prev BOMlen={}", m_bom_len);
         if(m_evt_handler->m_curr->pos.line == m_bom_line)
         {
-            _c4dbgpf("BOM remindent={} offset={}", remindent, m_evt_handler->m_curr->pos.offset);
+            _c4dbgpf("runk: BOM remindent={} offset={}", remindent, m_evt_handler->m_curr->pos.offset);
             _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, remindent >= m_bom_len, m_evt_handler->m_curr->pos);
             remindent -= m_bom_len;
         }
@@ -7504,7 +7586,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         m_doc_empty = false;
         if(C4_LIKELY( ! _annotations_require_key_container()))
         {
-            _c4dbgp("it's a seq, flow");
+            _c4dbgp("runk: it's a seq, flow");
             _handle_annotations_before_blck_val_scalar();
             m_evt_handler->begin_seq_val_flow();
             addrem_flags(RSEQ|RFLOW|RVAL, RUNK|RTOP|RDOC);
@@ -7512,7 +7594,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         }
         else
         {
-            _c4dbgp("start new block map, set flow seq as key (!)");
+            _c4dbgp("runk: start new block map, set flow seq as key (!)");
             _handle_annotations_before_start_mapblck(m_evt_handler->m_curr->pos.line);
             m_evt_handler->begin_map_val_block();
             addrem_flags(RMAP|RBLCK|RKEY, RUNK|RTOP|RDOC);
@@ -7530,7 +7612,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         m_doc_empty = false;
         if(C4_LIKELY( ! _annotations_require_key_container()))
         {
-            _c4dbgp("it's a map, flow");
+            _c4dbgp("runk: it's a map, flow");
             _handle_annotations_before_blck_val_scalar();
             m_evt_handler->begin_map_val_flow();
             addrem_flags(RMAP|RFLOW|RKEY, RVAL|RTOP|RUNK|RDOC);
@@ -7538,7 +7620,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         }
         else
         {
-            _c4dbgp("start new block map, set flow map as key (!)");
+            _c4dbgp("runk: start new block map, set flow map as key (!)");
             _handle_annotations_before_start_mapblck(m_evt_handler->m_curr->pos.line);
             m_evt_handler->begin_map_val_block();
             addrem_flags(RMAP|RBLCK|RKEY, RUNK|RTOP|RDOC);
@@ -7551,7 +7633,18 @@ void ParseEngine<EventHandler>::_handle_unk()
     }
     else if(first == '-' && _is_blck_token(m_evt_handler->m_curr->line_contents.rem))
     {
-        _c4dbgp("it's a seq, block");
+        _c4dbgp("runk: it's a seq, block");
+        size_t realindent = startindent;
+        if(C4_UNLIKELY(!m_evt_handler->m_curr->at_first_token()))
+        {
+            csubstr full = m_evt_handler->m_curr->line_contents.full.sub(m_bom_len);
+            size_t firstns = full.first_not_of(' ');
+            _c4assert(firstns != npos);
+            _c4dbgpf("runk: not at first token!\n  bomlen={}  first={} col={}  startindent={}  lineindent={}", m_bom_len, firstns, m_evt_handler->m_curr->pos.col, startindent, m_evt_handler->m_curr->line_contents.indentation);
+            if(m_bom_len + firstns + 1 != m_evt_handler->m_curr->pos.col)
+                _c4err("parse error");
+            realindent = firstns;
+        }
         _handle_block_check_leading_tabs(startcol);
         m_evt_handler->check_trailing_doc_token();
         _maybe_begin_doc();
@@ -7559,13 +7652,13 @@ void ParseEngine<EventHandler>::_handle_unk()
         m_evt_handler->begin_seq_val_block();
         addrem_flags(RSEQ|RBLCK|RVAL, RNXT|RTOP|RUNK|RDOC);
         m_doc_empty = false;
-        _set_indentation(startindent);
+        _set_indentation(realindent);
         _line_progressed(1);
         _maybe_skipchars(' ');
     }
     else if(first == '?' && _is_blck_token(m_evt_handler->m_curr->line_contents.rem))
     {
-        _c4dbgp("it's a map + this key is complex");
+        _c4dbgp("runk: it's a map + this key is complex");
         _handle_block_check_leading_tabs(startcol);
         m_evt_handler->check_trailing_doc_token();
         _maybe_begin_doc();
@@ -7576,12 +7669,22 @@ void ParseEngine<EventHandler>::_handle_unk()
         _set_indentation(0);
         _line_progressed(1);
         _maybe_skipchars(' ');
+        if(_is_blck_seq_token_maybe(m_evt_handler->m_curr->line_contents.rem))
+        {
+            _c4dbgp("runk: seqblck key starts after ?");
+            addrem_flags(RKCL, QMRK);
+            m_evt_handler->begin_seq_key_block();
+            addrem_flags(RSEQ|RVAL, RMAP|RKCL);
+            _save_indentation();
+            _line_progressed(1);
+            _maybe_skipchars(' ');
+        }
     }
     else if(first == ':' && _is_blck_token(m_evt_handler->m_curr->line_contents.rem))
     {
         if(m_doc_empty)
         {
-            _c4dbgp("it's a map with an empty key");
+            _c4dbgp("runk: it's a map with an empty key");
             _handle_block_check_leading_tabs(startcol);
             const size_t startline = m_evt_handler->m_curr->pos.line; // save
             m_evt_handler->check_trailing_doc_token();
@@ -7615,7 +7718,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     else if(first == '*')
     {
         csubstr ref = _scan_ref_map();
-        _c4dbgpf("ref! {}", _prs(ref));
+        _c4dbgpf("runk: ref! {}", _prs(ref));
         m_evt_handler->check_trailing_doc_token();
         _maybe_begin_doc();
         m_doc_empty = false;
@@ -7640,7 +7743,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     else if(first == '!')
     {
         csubstr tag = _scan_tag();
-        _c4dbgpf("unk: val tag! {}", _prs(tag));
+        _c4dbgpf("runk: val tag! {}", _prs(tag));
         // we need to buffer the tags, as there may be two
         // consecutive tags in here
         const size_t indentation = m_evt_handler->m_curr->line_contents.current_col(m_evt_handler->m_curr->line_contents.rem);
