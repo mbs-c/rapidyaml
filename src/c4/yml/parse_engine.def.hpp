@@ -1360,7 +1360,7 @@ bool ParseEngine<EventHandler>::_scan_scalar_plain_blck(ScannedScalar *C4_RESTRI
                     }
                     else
                     {
-                        _c4err("parse error");
+                        _c4err("multiline scalars cannot be used as implicit keys");
                     }
                 }
                 else
@@ -1606,11 +1606,15 @@ void ParseEngine<EventHandler>::_flow_container_was_a_key(size_t orig_indent)
 }
 
 template<class EventHandler>
-void ParseEngine<EventHandler>::_end_flow_container(size_t orig_indent)
+void ParseEngine<EventHandler>::_end_flow_container(size_t orig_indent, bool multiline)
 {
+    // this is called AFTER ending the flow container,
+    // so now we're at the parent container's scope
     if(has_all(RMAP|RBLCK) && has_none(RKCL|RVAL|RNXT))
     {
         _c4dbgp("flow container: end as vanilla block map key!");
+        if(C4_UNLIKELY(multiline))
+            _c4err("multiline key is invalid");
         if(C4_UNLIKELY(!_maybe_scan_following_colon()))
             _c4err("could not find ':' colon after key");
         _maybe_skip_whitespace_tokens();
@@ -1618,18 +1622,21 @@ void ParseEngine<EventHandler>::_end_flow_container(size_t orig_indent)
     }
     else if(has_none(RFLOW))
     {
-        _c4dbgp("flow container: now not in flow!");
+        _c4dbgp("end_flow_container: now not in flow!");
         if(has_any(RUNK|RSEQ|RKCL) && _maybe_scan_following_colon())
         {
+            if(C4_UNLIKELY(multiline))
+                _c4err("multiline key is invalid");
             _flow_container_was_a_key(orig_indent);
         }
         else
         {
-            _c4dbgp("flow container: end map as key!");
+            _c4dbgp("end_flow_container: end map as key!");
         }
     }
     else if(has_any(RSEQ))
     {
+        _c4dbgp("end_flow_container: now in a flow seq");
         _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, has_any(RFLOW), m_evt_handler->m_curr->pos);
         _mark_seqflow_val_end();
     }
@@ -1638,21 +1645,21 @@ void ParseEngine<EventHandler>::_end_flow_container(size_t orig_indent)
 template<class EventHandler>
 void ParseEngine<EventHandler>::_end_map_flow()
 {
-    bool multiline = m_options.detect_flow_ml() && m_evt_handler->m_parent->pos.line < m_evt_handler->m_curr->pos.line;
+    bool multiline = m_evt_handler->m_parent->pos.line < m_evt_handler->m_curr->pos.line;
     size_t orig_indent = m_evt_handler->m_curr->indref;
     _c4dbgpf("mapflow: end, multiline={}", multiline);
-    m_evt_handler->end_map_flow(multiline);
-    _end_flow_container(orig_indent);
+    m_evt_handler->end_map_flow(multiline && m_options.detect_flow_ml());
+    _end_flow_container(orig_indent, multiline);
 }
 
 template<class EventHandler>
 void ParseEngine<EventHandler>::_end_seq_flow()
 {
-    bool multiline = m_options.detect_flow_ml() && m_evt_handler->m_parent->pos.line < m_evt_handler->m_curr->pos.line;
+    bool multiline = m_evt_handler->m_parent->pos.line < m_evt_handler->m_curr->pos.line;
     size_t orig_indent = m_evt_handler->m_curr->indref;
     _c4dbgpf("seqflow: end, multiline={}", multiline);
-    m_evt_handler->end_seq_flow(multiline);
-    _end_flow_container(orig_indent);
+    m_evt_handler->end_seq_flow(multiline && m_options.detect_flow_ml());
+    _end_flow_container(orig_indent, multiline);
 }
 
 template<class EventHandler>
@@ -7847,6 +7854,8 @@ void ParseEngine<EventHandler>::_handle_unk()
             else
             {
                 _c4dbgp("runk: start new block map, set scalar as key");
+                if(C4_UNLIKELY(m_evt_handler->m_curr->pos.line > startline))
+                    _c4err("multiline scalars cannot be used as implicit keys");
                 _handle_block_check_leading_tabs(startcol, startscalar);
                 _handle_annotations_before_start_mapblck(startline);
                 _handle_colon();
@@ -7877,6 +7886,8 @@ void ParseEngine<EventHandler>::_handle_unk()
             else
             {
                 _c4dbgp("runk: start new block map, set double-quoted scalar as key");
+                if(C4_UNLIKELY(m_evt_handler->m_curr->pos.line > startline))
+                    _c4err("multiline scalars cannot be used as implicit keys");
                 _handle_block_check_leading_tabs(startcol, startscalar);
                 _handle_annotations_before_start_mapblck(startline);
                 m_evt_handler->begin_map_val_block();
@@ -7934,6 +7945,8 @@ void ParseEngine<EventHandler>::_handle_unk()
             else
             {
                 _c4dbgp("runk: start new block map, set scalar as key");
+                if(C4_UNLIKELY(m_evt_handler->m_curr->pos.line > startline))
+                    _c4err("multiline scalars cannot be used as implicit keys");
                 _handle_block_check_leading_tabs(startcol, startscalar);
                 _handle_annotations_before_start_mapblck(startline);
                 _handle_colon();

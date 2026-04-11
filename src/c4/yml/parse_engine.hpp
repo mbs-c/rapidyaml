@@ -507,7 +507,7 @@ private:
     void  _end_seq_blck();
     void  _end2_map();
     void  _end2_seq();
-    void  _end_flow_container(size_t orig_indent);
+    void  _end_flow_container(size_t orig_indent, bool multiline);
     void  _flow_container_was_a_key(size_t orig_indent);
 
     void  _begin2_doc();
@@ -684,15 +684,15 @@ private:
     Annotation m_pending_anchors;
     Annotation m_pending_tags;
 
-    bool m_doc_empty = true;
-    size_t m_prev_colon = npos;
-    size_t m_prev_val_end = npos;
+    bool m_doc_empty;
+    size_t m_prev_colon;
+    size_t m_prev_val_end;
 
 private:
 
-    size_t m_bom_len = 0;
-    size_t m_bom_line = 0;
-    Encoding_e m_encoding = UTF8;
+    size_t m_bom_len;
+    size_t m_bom_line;
+    Encoding_e m_encoding;
 
 private:
 
