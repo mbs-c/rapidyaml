@@ -71,7 +71,7 @@ void test_expected_error_ints_from_yaml(ExpectedErrorType errtype, TestCaseFlags
 void test_expected_error_tree_from_yaml(ExpectedErrorType errtype, TestCaseFlags_e tcflags, std::string const& parsed_yaml, Location const& expected_error_location)
 {
     SCOPED_TRACE("test_expected_error_tree_from_yaml");
-    if(tcflags & (HAS_CONTAINER_KEYS|NO_TREE_PARSE))
+    if(tcflags & (HAS_CONTAINER_KEYS))
         return;
     else
     {

@@ -519,7 +519,7 @@ ENGINE_TEST_ERRLOC(MapValNestedIndentComma0_0tab, Location(10, 1),
 //-----------------------------------------------------------------------------
 
 
-const TestCaseFlags_e keyflags = (TestCaseFlags_e)(HAS_CONTAINER_KEYS|NO_TREE_PARSE|EXPECT_PARSE_ERROR);
+const TestCaseFlags_e keyflags = (TestCaseFlags_e)(HAS_CONTAINER_KEYS|EXPECT_PARSE_ERROR);
 
 ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0, keyflags, ExpectedErrorType::err_parse,
                     Location(6, 1),

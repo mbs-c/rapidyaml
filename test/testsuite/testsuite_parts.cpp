@@ -12,11 +12,11 @@ namespace {
 #define _(testcase, reason) AllowedFailure{csubstr(testcase), csubstr(reason)}
 
 // To see the test case contents, refer to this URL:
-// https://github.com/yaml/yaml-test-suite/tree/master/src
+// https://matrix.yaml.info/details/QLJ7.html
 const AllowedFailure allowed_failures[] = {
 
     //-------------------------------------------------------------------------
-    // SECTION 1. Known issues on valid YAML
+    // SECTION 1. Known issues on valid YAML (TO-DO)
     //
     // These tests are temporarily skipped, and cover issues that must be fixed.
 
@@ -24,24 +24,16 @@ const AllowedFailure allowed_failures[] = {
 
 
     //-------------------------------------------------------------------------
-    // SECTION 2. Known issues on invalid YAML
+    // SECTION 2. Missing errors on invalid YAML (TO-DO)
     //
     // These tests are temporarily skipped, and cover issues that must be fixed.
 
-    // These invalid YAML cases should cause parse errors, and currently don't.
-
     // block scalars
-    _("S98Z-error"              , "should not accept block scalar with more spaces than first content line"),
-    // docs
-    _("CXX2-error"              , "should not accept map with anchor after document start token"), // same for scalars/seqs
+    _("S98Z-error"              , "error: block scalar with more spaces than first content line"),
+    // block maps
+    _("CXX2-error"              , "error: map with anchor after document start token"), // same for scalars/seqs
     // directives
     _("QLJ7-error"              , "%TAG should apply only to the next document"),
-    // tabs
-    _("Y79Y_004-error"          , "cannot use tab for indentation of block entry"),
-    _("Y79Y_006-error"          , "should not accept tab after ?"),
-    _("Y79Y_008-error"          , "should not accept tab after ?"),
-    _("Y79Y_007-error"          , "tab tokens"),
-    _("Y79Y_009-error"          , "should not accept tab after : succeeding ?"),
 
 
     //-------------------------------------------------------------------------
@@ -51,16 +43,22 @@ const AllowedFailure allowed_failures[] = {
     // are deliberately not implemented by ryml.
 
     #ifndef RYML_WITH_TAB_TOKENS
-    // -<tab> or :<tab> are supported only when the above macro is defined
-    _("6BCT-in_yaml"            , "tabs tokens"),
-    _("A2M4-in_yaml"            , "tabs tokens"),
-    _("DC7X-in_yaml"            , "tabs tokens"),
-    _("J3BT-in_yaml"            , "tabs tokens"),
-    _("K54U-in_yaml"            , "tabs tokens"),
-    _("Y79Y_010-in_yaml"        , "tabs tokens"),
+    // '-', ':' or '?' followed directly by '\t' are
+    // supported only when the above macro is defined
+    _("6BCT-in_yaml"            , "tab after : and -"),
+    _("A2M4-in_yaml"            , "tab after -"),
+    _("DC7X-in_yaml"            , "tab after :"),
+    _("J3BT-in_yaml"            , "tab after :"),
+    _("K54U-in_yaml"            , "tab after ---"),
+    _("Y79Y_004-error"          , "tab after -"),
+    _("Y79Y_006-error"          , "tab after ?"),
+    _("Y79Y_007-error"          , "tab after :"),
+    _("Y79Y_008-error"          , "tab after ?"),
+    _("Y79Y_009-error"          , "tab after :"),
+    _("Y79Y_010-in_yaml"        , "tab after -"),
     #endif
 
-    // container keys are deliberately not supported by the ryml tree.
+    // Container keys are deliberately not supported by the ryml tree.
     // But they ARE supported by the parse engine. So they are dealt
     // with separately using the event parser. See below.
 
