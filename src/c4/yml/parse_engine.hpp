@@ -32,18 +32,22 @@ namespace yml {
  * user to provide his own custom handler if he wishes to bypass the
  * rapidyaml @ref Tree.
  *
- * There are two handlers implemented in this project:
+ * The following handlers are implemented in this project:
  *
  * - @ref EventHandlerTree is the handler responsible for creating the
- *   ryml @ref Tree
+ *   ryml @ref Tree . This is part of the library.
  *
- * - @ref extra::EventHandlerInts parses YAML into an integer array
-     representation of the tree and scalars.
+ * - Extra handlers (not part of the library, but provided as extra classes):
  *
- * - @ref extra::EventHandlerTestSuite is the handler responsible for emitting
- *   standardized [YAML test suite
- *   events](https://github.com/yaml/yaml-test-suite), used (only) in
- *   the CI of this project.
+ *   - @ref extra::EventHandlerInts parses YAML into a contiguous
+ *     integer array representing the YAML structure.
+ *
+ *   - @ref extra::EventHandlerTestSuite parses YAML into the
+ *     standardized [YAML test suite
+ *     events](https://github.com/yaml/yaml-test-suite), used in:
+ *       - [play.yaml.com](https://play.yaml.com/)
+ *       - [matrix.yaml.info/](https://matrix.yaml.info/)
+ *       - the CI of this project.
  *
  *
  * ### Event model
@@ -205,12 +209,13 @@ class ConstNodeRef;
 struct FilterResult;
 struct FilterResultExtending;
 
-
+/** @cond dev */
 typedef enum BlockChomp_ {
     CHOMP_CLIP,    //!< single newline at end (default)
     CHOMP_STRIP,   //!< no newline at end     (-)
     CHOMP_KEEP     //!< all newlines from end (+)
 } BlockChomp_e;
+/** @endcond */
 
 
 /** Quickly inspect the source to estimate the number of nodes the
@@ -306,6 +311,7 @@ public:
      * should) also be reserved. */
     void reserve_stack(id_type capacity)
     {
+        _RYML_ASSERT_BASIC(m_evt_handler);
         m_evt_handler->m_stack.reserve(capacity);
     }
 
@@ -315,9 +321,6 @@ public:
     {
         _resize_locations(num_source_lines);
     }
-
-    RYML_DEPRECATED("filter arena no longer needed")
-    void reserve_filter_arena(size_t) {}
 
     /** @} */
 
@@ -344,9 +347,6 @@ public:
 
     id_type stack_capacity() const { _RYML_ASSERT_BASIC(m_evt_handler); return m_evt_handler->m_stack.capacity(); }
     size_t locations_capacity() const { return m_newline_offsets_capacity; }
-
-    RYML_DEPRECATED("filter arena no longer needed")
-    size_t filter_arena_capacity() const { return 0u; }
 
     /** @} */
 
@@ -378,18 +378,6 @@ public:
     Location val_location(const char *val) const;
 
     /** @} */
-
-public:
-
-    /** @cond dev */
-    template<class U>
-    RYML_DEPRECATED("moved to Tree::location(Parser const&). deliberately undefined here.")
-    auto location(Tree const&, id_type node) const -> typename std::enable_if<U::is_wtree, Location>::type;
-
-    template<class U>
-    RYML_DEPRECATED("moved to ConstNodeRef::location(Parser const&), deliberately undefined here.")
-    auto location(ConstNodeRef const&) const -> typename std::enable_if<U::is_wtree, Location>::type;
-    /** @endcond */
 
 public:
 
@@ -452,12 +440,15 @@ private:
     bool    _scan_scalar_seq_json(ScannedScalar *C4_RESTRICT sc);
     bool    _scan_scalar_plain_unk(ScannedScalar *C4_RESTRICT sc);
     bool    _is_valid_start_scalar_plain_flow(csubstr s);
+    bool    _is_valid_start_scalar_plain_flow_check_block_token(csubstr s);
+    bool    _is_valid_start_scalar_plain_flow_check_qmrk(csubstr s);
+    bool    _scan_scalar_plain_handle_newline(csubstr s, size_t offs);
+    void    _check_valid_newline_in_quoted_scalar();
 
     ScannedScalar _scan_scalar_squot();
     ScannedScalar _scan_scalar_dquot();
 
     void    _scan_block(ScannedBlock *C4_RESTRICT sb, size_t indref);
-
     csubstr _scan_anchor();
     csubstr _scan_ref_seq();
     csubstr _scan_ref_map();
@@ -502,6 +493,13 @@ private:
     void  _handle_usty();
 
     void  _handle_flow_skip_whitespace();
+    void  _handle_flow_line_beginning();
+
+    size_t _handle_block_skip_leading_whitespace();
+    C4_ALWAYS_INLINE
+    size_t _handle_block_get_whitespace_mark() const noexcept { return m_evt_handler->m_curr->pos.offset; }
+    void   _handle_block_check_leading_tabs(size_t prev_mark) { return _handle_block_check_leading_tabs(prev_mark, m_evt_handler->m_curr->pos.offset); }
+    void   _handle_block_check_leading_tabs(size_t start_mark, size_t end_mark);
 
     void  _end_map_flow();
     void  _end_seq_flow();
@@ -509,7 +507,7 @@ private:
     void  _end_seq_blck();
     void  _end2_map();
     void  _end2_seq();
-    void  _end_flow_container(size_t orig_indent);
+    void  _end_flow_container(size_t orig_indent, bool multiline);
     void  _flow_container_was_a_key(size_t orig_indent);
 
     void  _begin2_doc();
@@ -534,16 +532,13 @@ private:
     void  _handle_indentation_pop(ParserState const* dst);
 
     void _maybe_skip_comment();
+    void _maybe_skip_comment_strict();
     void _skip_comment();
     void _maybe_skip_whitespace_tokens();
     void _maybe_skipchars(char c);
-    #ifdef RYML_NO_COVERAGE__TO_BE_DELETED
-    void _maybe_skipchars_up_to(char c, size_t max_to_skip);
-    #endif
     template<size_t N>
     void _skipchars(const char (&chars)[N]);
     bool _maybe_scan_following_colon() noexcept;
-    bool _maybe_scan_following_comma() noexcept;
 
 public:
 
@@ -567,6 +562,7 @@ public:
     template<class FilterProcessor> void   _filter_ws_skip_trailing(FilterProcessor &C4_RESTRICT proc);
 
     template<class FilterProcessor> void   _filter_dquoted_backslash(FilterProcessor &C4_RESTRICT proc);
+    template<class FilterProcessor> void   _filter_dquoted_backslash_decode(FilterProcessor &C4_RESTRICT proc, size_t sz);
 
     template<class FilterProcessor> void   _filter_chomp(FilterProcessor &C4_RESTRICT proc, BlockChomp_e chomp, size_t indentation);
     template<class FilterProcessor> size_t _handle_all_whitespace(FilterProcessor &C4_RESTRICT proc, BlockChomp_e chomp);
@@ -590,11 +586,6 @@ private:
 
     void   _scan_line();
     substr _peek_next_line(size_t pos=npos) const;
-
-    bool _at_line_begin() const
-    {
-        return m_evt_handler->m_curr->line_contents.rem.begin() == m_evt_handler->m_curr->line_contents.full.begin();
-    }
 
     void _relocate_arena(csubstr prev_arena, substr next_arena);
     static void _s_relocate_arena(void*, csubstr prev_arena, substr next_arena);
@@ -652,28 +643,28 @@ private:
             size_t line;
         };
         Entry annotations[2];
-        size_t num_entries;
+        uint8_t num_entries;
     };
 
     void _handle_colon();
     void _add_annotation(Annotation *C4_RESTRICT dst, csubstr str, size_t indentation, size_t line);
-    void _clear_annotations(Annotation *C4_RESTRICT dst);
-    bool _has_pending_annotations() const { return m_pending_tags.num_entries || m_pending_anchors.num_entries; }
-    #ifdef RYML_NO_COVERAGE__TO_BE_DELETED
-    bool _handle_indentation_from_annotations();
-    #endif
+    void _add_annotation(Annotation *C4_RESTRICT dst, csubstr str);
+    C4_ALWAYS_INLINE void _clear_annotations(Annotation *C4_RESTRICT dst) noexcept { dst->num_entries = 0; }
     bool _annotations_require_key_container() const;
+    bool _handle_annotations_before_unexpected_flow_token_rkey();
     void _handle_annotations_before_blck_key_scalar();
     void _handle_annotations_before_blck_val_scalar();
     void _handle_annotations_before_start_mapblck(size_t current_line);
     void _handle_annotations_before_start_mapblck_as_key();
     void _handle_annotations_and_indentation_after_start_mapblck(size_t key_indentation, size_t key_line);
     size_t _select_indentation_from_annotations(size_t val_indentation, size_t val_line);
+    void _handle_keyref(csubstr alias);
+    void _handle_valref(csubstr alias);
     void _handle_directive(csubstr rem);
+    bool _validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const;
+    bool _validate_directive_tag(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT handle, csubstr *C4_RESTRICT prefix) const;
     bool _handle_bom();
     void _handle_bom(Encoding_e enc);
-
-    void _check_tag(csubstr tag);
 
 private:
 
@@ -693,15 +684,15 @@ private:
     Annotation m_pending_anchors;
     Annotation m_pending_tags;
 
-    bool m_doc_empty = true;
-    size_t m_prev_colon = npos;
-    size_t m_prev_val_end = npos;
+    bool m_doc_empty;
+    size_t m_prev_colon;
+    size_t m_prev_val_end;
 
 private:
 
-    size_t m_bom_len = 0;
-    size_t m_bom_line = 0;
-    Encoding_e m_encoding = UTF8;
+    size_t m_bom_len;
+    size_t m_bom_line;
+    Encoding_e m_encoding;
 
 private:
 
@@ -712,9 +703,12 @@ private:
 
 public:
 
-    // deprecated parse methods
+    // deprecated methods
 
     /** @cond dev */
+    RYML_DEPRECATED("filter arena no longer needed") size_t filter_arena_capacity() const { return 0u; } // LCOV_EXCL_LINE
+    RYML_DEPRECATED("filter arena no longer needed") void reserve_filter_arena(size_t) {} // LCOV_EXCL_LINE
+
     template<class U=EventHandler> RYML_DEPRECATED("removed, deliberately undefined. use the function in parse.hpp.") typename std::enable_if<U::is_wtree, void>::type parse_in_place(csubstr filename, substr yaml, Tree *t, size_t node_id);
     template<class U=EventHandler> RYML_DEPRECATED("removed, deliberately undefined. use the function in parse.hpp.") typename std::enable_if<U::is_wtree, void>::type parse_in_place(                  substr yaml, Tree *t, size_t node_id);
     template<class U=EventHandler> RYML_DEPRECATED("removed, deliberately undefined. use the function in parse.hpp.") typename std::enable_if<U::is_wtree, void>::type parse_in_place(csubstr filename, substr yaml, Tree *t                );
@@ -739,6 +733,14 @@ public:
     template<class U=EventHandler> RYML_DEPRECATED("removed, deliberately undefined. use the csubstr version in parse.hpp.") typename std::enable_if<U::is_wtree, void>::type parse_in_arena(                  substr yaml, NodeRef node           );
     template<class U=EventHandler> RYML_DEPRECATED("removed, deliberately undefined. use the csubstr version in parse.hpp.") typename std::enable_if<U::is_wtree, Tree>::type parse_in_arena(csubstr filename, substr yaml                         );
     template<class U=EventHandler> RYML_DEPRECATED("removed, deliberately undefined. use the csubstr version in parse.hpp.") typename std::enable_if<U::is_wtree, Tree>::type parse_in_arena(                  substr yaml                         );
+
+    template<class U>
+    RYML_DEPRECATED("moved to Tree::location(Parser const&). deliberately undefined here.")
+    auto location(Tree const&, id_type node) const -> typename std::enable_if<U::is_wtree, Location>::type;
+
+    template<class U>
+    RYML_DEPRECATED("moved to ConstNodeRef::location(Parser const&), deliberately undefined here.")
+    auto location(ConstNodeRef const&) const -> typename std::enable_if<U::is_wtree, Location>::type;
     /** @endcond */
 
 };

@@ -52,6 +52,7 @@ RYML_EXPORT csubstr normalize_tag_long(csubstr tag);
 RYML_EXPORT csubstr normalize_tag_long(csubstr tag, substr output);
 
 RYML_EXPORT bool is_custom_tag(csubstr tag);
+RYML_EXPORT bool is_valid_tag_handle(csubstr handle);
 
 
 struct RYML_EXPORT TagDirective
@@ -63,7 +64,7 @@ struct RYML_EXPORT TagDirective
     /** The next node to which this tag directive applies */
     id_type next_node_id;
 
-    bool create_from_str(csubstr directive_); ///< leaves next_node_id unfilled
+    void create(csubstr handle, csubstr prefix); ///< leaves next_node_id unfilled
     size_t transform(csubstr tag, substr output, Callbacks const& callbacks, bool with_brackets=true) const;
 };
 

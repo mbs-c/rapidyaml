@@ -101,7 +101,15 @@ jobs:
           -DRYML_BUILD_TESTS=ON \
           -DRYML_DBG=ON
     - name: build (issue \#${{matrix.issue}})
-      run: cmake --build build --target ryml-test-build --parallel --verbose
+      run: |
+        numprocs=`nproc`
+        if [[ "$cxxflags" == *"32"* ]] ; then
+            if (( $numprocs > 1 )) ; then
+                numprocs=$(($numprocs / 2))
+            fi
+        fi
+        export CMAKE_BUILD_PARALLEL_LEVEL=$numprocs
+        cmake --build build --target ryml-test-build --parallel $numprocs --verbose
     - name: run (issue \#${{matrix.issue}})
       run: |
         source .github/setenv.sh
@@ -136,7 +144,13 @@ jobs:
           -DRYML_BUILD_TESTS=ON \
           -DRYML_DBG=OFF
     - name: build (issue \#${{matrix.issue}})
-      run: cmake --build build --target ryml-test-build --parallel --verbose
+      run: |
+        numprocs=`nproc`
+        if (( $numprocs > 1 )) ; then
+            numprocs=$(($numprocs / 2))
+        fi
+        export CMAKE_BUILD_PARALLEL_LEVEL=$numprocs
+        cmake --build build --target ryml-test-build --parallel $numprocs --verbose
     - name: run (issue \#${{matrix.issue}})
       run: |
         source .github/setenv.sh
@@ -217,8 +231,8 @@ jobs:
         - {std: 11, cxx:  6  , bits: 32, vg: OFF, img: 18.04}
         - {std: 11, cxx:  5  , bits: 64, vg: OFF, img: 18.04}
         - {std: 11, cxx:  5  , bits: 32, vg: OFF, img: 18.04}
-        - {std: 11, cxx:  4.9, bits: 64, vg: OFF, img: 18.04}
-        - {std: 11, cxx:  4.9, bits: 32, vg: OFF, img: 18.04}
+        - {std: 11, cxx:  4.9, bits: 64, vg: OFF, img: 18.04, halfnprocs: 1}
+        - {std: 11, cxx:  4.9, bits: 32, vg: OFF, img: 18.04, halfnprocs: 1}
         - {std: 11, cxx:  4.8, bits: 64, vg: OFF, img: 18.04}
         - {std: 11, cxx:  4.8, bits: 32, vg: OFF, img: 18.04}
     env:: load('share/env.yaml')
@@ -226,11 +240,11 @@ jobs:
     - :: checkout-manual
     - name: install
       run: c4core-install g++-${{matrix.cxx}}
-    - :: run-gcc-manual-with-flags('Debug'                '-m${{matrix.bits}}')
-    - :: run-gcc-manual-with-flags('Release' '-O1 -DNDEBUG -m${{matrix.bits}}')
-    - :: run-gcc-manual-with-flags('Release' '-O2 -DNDEBUG -m${{matrix.bits}}')
-    - :: run-gcc-manual-with-flags('Release' '-O3 -DNDEBUG -m${{matrix.bits}}')
-    - :: run-gcc-manual-with-flags('Release' '-Os -DNDEBUG -m${{matrix.bits}}')
+    - :: run-gcc-manual-with-flags('Debug'                '-m${{matrix.bits}}' '${{matrix.halfnprocs}}')
+    - :: run-gcc-manual-with-flags('Release' '-O1 -DNDEBUG -m${{matrix.bits}}' '${{matrix.halfnprocs}}')
+    - :: run-gcc-manual-with-flags('Release' '-O2 -DNDEBUG -m${{matrix.bits}}' '${{matrix.halfnprocs}}')
+    - :: run-gcc-manual-with-flags('Release' '-O3 -DNDEBUG -m${{matrix.bits}}' '${{matrix.halfnprocs}}')
+    - :: run-gcc-manual-with-flags('Release' '-Os -DNDEBUG -m${{matrix.bits}}' '${{matrix.halfnprocs}}')
 
   #----------------------------------------------------------------------------
   gccsan:

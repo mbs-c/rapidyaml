@@ -37,6 +37,29 @@
 namespace c4 {
 namespace yml {
 
+const bomspec bomspecs_[] = {
+    //                        bare string causes problems in gcc5 and earlier
+    {"NOBOM"       , UTF8   , csubstr("", size_t(0))},
+    {"UTF8"        , UTF8   , csubstr("\xef\xbb\xbf", 3)},
+    {"UTF16BE"     , UTF16BE, csubstr("\xfe\xff", 2)},
+    {"!UTF16BE-a"  , UTF16BE, csubstr("\x00""a", 2)},
+    {"!UTF16BE-b"  , UTF16BE, csubstr("\x00""b", 2)},
+    {"!UTF16BE-0"  , UTF16BE, csubstr("\x00""0", 2)},
+    {"UTF16LE"     , UTF16LE, csubstr("\xff\xfe", 2)},
+    {"!UTF16LE-a"  , UTF16LE, csubstr("a""\x00" , 2)},
+    {"!UTF16LE-b"  , UTF16LE, csubstr("b""\x00" , 2)},
+    {"!UTF16LE-0"  , UTF16LE, csubstr("0""\x00" , 2)},
+    {"UTF32BE"     , UTF32BE, csubstr("\x00\x00\xfe\xff", 4)},
+    {"!UTF32BE-a"  , UTF32BE, csubstr("\x00\x00\x00""a" , 4)},
+    {"!UTF32BE-b"  , UTF32BE, csubstr("\x00\x00\x00""b" , 4)},
+    {"!UTF32BE-0"  , UTF32BE, csubstr("\x00\x00\x00""0" , 4)},
+    {"UTF32LE"     , UTF32LE, csubstr("\xff\xfe\x00\x00", 4)},
+    {"!UTF32LE-a"  , UTF32LE, csubstr("a""\x00\x00\x00" , 4)},
+    {"!UTF32LE-b"  , UTF32LE, csubstr("b""\x00\x00\x00" , 4)},
+    {"!UTF32LE-0"  , UTF32LE, csubstr("0""\x00\x00\x00" , 4)},
+};
+const cspan<bomspec> bomspecs = bomspecs_;
+
 
 id_type _num_leaves(Tree const& t, id_type node)
 {
@@ -260,7 +283,11 @@ ExpectError::ExpectError(ExpectedErrorType errtype, Tree *tree, Location loc)
     EXPECT_NE(m_glob_prev.m_allocate, nullptr);
     EXPECT_NE(m_tree_prev.m_allocate, nullptr);
     auto errb = [](csubstr msg, ErrorDataBasic const& errdata, void *this_) {
-        _c4dbgp("called basic error callback!");
+        _c4dbgp("called basic error callback! from here:");
+        #ifdef RYML_DBG
+        _dbg_printf("{}:{}: cpploc\n", errdata.location.name, errdata.location.line);
+        _dbg_printf("{}:{}: {}\n", errdata.location.name, errdata.location.line, msg);
+        #endif
         ((ExpectError*)this_)->m_error = ExpectedErrorType::err_basic; // assign in here to ensure the exception was thrown here
         C4_IF_EXCEPTIONS(
             throw ExpectedErrorBasic(msg, errdata);
@@ -272,6 +299,10 @@ ExpectError::ExpectError(ExpectedErrorType errtype, Tree *tree, Location loc)
     };
     auto errp = [](csubstr msg, ErrorDataParse const& errdata, void *this_) {
         _c4dbgpf("called parse error callback! (withlocation={})", bool(errdata.ymlloc));
+        #ifdef RYML_DBG
+        _dbg_printf("{}:{}: cpploc\n", errdata.cpploc.name, errdata.cpploc.line);
+        _dbg_printf("{}:{}: {}\n", errdata.cpploc.name, errdata.cpploc.line, msg);
+        #endif
         ((ExpectError*)this_)->m_error = ExpectedErrorType::err_parse; // assign in here to ensure the exception was thrown here
         C4_IF_EXCEPTIONS(
             throw ExpectedErrorParse(msg, errdata);
@@ -283,6 +314,10 @@ ExpectError::ExpectError(ExpectedErrorType errtype, Tree *tree, Location loc)
     };
     auto errv = [](csubstr msg, ErrorDataVisit const& errdata, void *this_) {
         _c4dbgp("called visit error callback!");
+        #ifdef RYML_DBG
+        _dbg_printf("{}:{}: cpploc\n", errdata.cpploc.name, errdata.cpploc.line);
+        _dbg_printf("{}:{}: {}\n", errdata.cpploc.name, errdata.cpploc.line, msg);
+        #endif
         ((ExpectError*)this_)->m_error = ExpectedErrorType::err_visit; // assign in here to ensure the exception was thrown here
         C4_IF_EXCEPTIONS(
             throw ExpectedErrorVisit(msg, errdata);
@@ -390,7 +425,7 @@ void ExpectError::check_error_basic(Tree *tree, fntestref fn, bool only_basic)
     {
         C4_IF_EXCEPTIONS_( , ExpectedErrorBasic const& e = s_jmp_err_basic);
         (void)e;
-        #if defined(RYML_DBG)
+        #if defined(RYML_DBG) && defined(_RYML_WITH_EXCEPTIONS)
         std::cout << "---------------\n";
         std::cout << "got an expected parse error:\n" << e.what() << "\n";
         std::cout << "---------------\n";
@@ -422,7 +457,7 @@ void ExpectError::check_error_parse(Tree *tree, fntestref fn, Location const& ex
     {
         C4_IF_EXCEPTIONS_( , ExpectedErrorParse const& e = s_jmp_err_parse);
         (void)e;
-        #if defined(RYML_DBG)
+        #if defined(RYML_DBG) && defined(_RYML_WITH_EXCEPTIONS)
         std::cout << "---------------\n";
         std::cout << "got an expected parse error:\n" << e.what() << "\n";
         std::cout << "---------------\n";
@@ -477,7 +512,7 @@ void ExpectError::check_error_visit(Tree *tree, fntestref fn, id_type id)
     {
         C4_IF_EXCEPTIONS_( , ExpectedErrorVisit const& e = s_jmp_err_visit);
         (void)e;
-        #if defined(RYML_DBG)
+        #if defined(RYML_DBG) && defined(_RYML_WITH_EXCEPTIONS)
         std::cout << "---------------\n";
         std::cout << "got an expected visit error:\n" << e.what() << "\n";
         std::cout << "---------------\n";

@@ -600,28 +600,22 @@ public:
     /** @name YAML directive events */
     /** @{ */
 
-    void add_directive(csubstr directive)
+    void add_directive_yaml(csubstr yaml_version)
     {
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, directive.begins_with('%'));
-        if(directive.begins_with("%TAG"))
-        {
-            const id_type pos = _num_tag_directives();
-            if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
-            if(C4_UNLIKELY(!m_tag_directives[pos].create_from_str(directive)))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "failed to add directive");
-        }
-        else if(directive.begins_with("%YAML"))
-        {
-            _c4dbgpf("%YAML directive! ignoring...: {}", directive);
-            if(C4_UNLIKELY(m_has_yaml_directive))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
-            m_has_yaml_directive = true;
-        }
-        else
-        {
-            _c4dbgpf("unknown directive! ignoring... {}", directive);
-        }
+        (void)yaml_version;
+        _c4dbgpf("%YAML directive! {}", yaml_version);
+        if(C4_UNLIKELY(m_has_yaml_directive))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
+        m_has_yaml_directive = true;
+    }
+
+    void add_directive_tag(csubstr handle, csubstr prefix)
+    {
+        _c4dbgpf("%TAG directive! handle={} prefix={}", handle, prefix);
+        const id_type pos = _num_tag_directives();
+        if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
+        m_tag_directives[pos].create(handle, prefix);
     }
 
     /** @} */

@@ -4,16 +4,16 @@ namespace c4 {
 namespace yml {
 
 
+namespace {
+
 // g++-5 does not like creating a csubstr directly from the literal.
 // so we use this macro (undefined at the end) to make the
 // declarations less verbose:
 #define _(testcase, reason) AllowedFailure{csubstr(testcase), csubstr(reason)}
 
-
 // To see the test case contents, refer to this URL:
 // https://github.com/yaml/yaml-test-suite/tree/master/src
-constexpr const AllowedFailure allowed_failures[] = {
-
+const AllowedFailure allowed_failures[] = {
 
     //-------------------------------------------------------------------------
     // SECTION 1. Known issues on valid YAML
@@ -28,55 +28,20 @@ constexpr const AllowedFailure allowed_failures[] = {
     //
     // These tests are temporarily skipped, and cover issues that must be fixed.
 
-    // These invalid YAML cases should materialize parse errors, and currently don't.
-    // tc=Y79Y_004 ; td=`echo $tc | sed s:_:/:g`  // NOLINT
-
-    // flow seq
-    _("YJV2-error"              , "should not accept [-]"),
-    _("G5U8-error"              , "should not accept [-, -]"),
-    _("N782-error"              , "should not accept doc tokens inside flow seq"), // same for scalars/maps
-    _("Y79Y_004-error"          , "cannot use tab for indentation of block entry"),
-    _("Y79Y_005-error"          , "cannot use tab for indentation of block entry"),
-
-    // block seq
-    _("JKF3-error"              , "should not accept multiline unindented double quoted scalar"),
-    _("SY6V-error"              , "should not accept - after anchor"),
-    _("Y79Y_003-error"          , "should not accept leading tabs in flow value"), // same for maps
-
-    // block maps
-    _("4EJS-error"              , "should not accept tabs as indendation in a mapping"),
-    _("5U3A-error"              , "should not accept opening a sequence on same line as block key"),
-    _("9C9N-error"              , "should not accept non-indented flow sequence"),
-    _("C2SP-error"              , "should not accept flow sequence key with terminating ] on the next line"),
-    _("7LBH-error"              , "should not accept multiline double quoted keys"),
-    _("D49Q-error"              , "should not accept multiline single quoted keys"),
-    _("DK95_06-error"           , "should not accept tab indentation"),
-    _("QB6E-error"              , "should not accept unindented multiline double quoted scalar"),
-    _("VJP3_00-error"           , "should not accept non-indented flow map value"),
-    _("Y79Y_006-error"          , "should not accept tab after ?"),
-    _("Y79Y_007-error"          , "should not accept tab after : succeeding ?"),
-    _("Y79Y_008-error"          , "should not accept tab after ?"),
-    _("Y79Y_009-error"          , "should not accept tab after : succeeding ?"),
-
-    // single-quoted scalars
-    _("RXY3-error"              , "should not accept document-end marker in single quoted string"),
-
-    // double-quoted scalars
-    _("5TRB-error"              , "should not accept document-end marker in double quoted string"),
-    _("9MQT_01-error"           , "should not accept document-end marker in double quoted string"),
-    _("DK95_01-error"           , "should not accept leading tabs in double quoted multiline scalar"),
+    // These invalid YAML cases should cause parse errors, and currently don't.
 
     // block scalars
-    _("S4GJ-error"              , "should not accept text after block scalar indicator"),
     _("S98Z-error"              , "should not accept block scalar with more spaces than first content line"),
-    _("X4QW-error"              , "should not accept comment without whitespace after block scalar indicator"),
-
     // docs
     _("CXX2-error"              , "should not accept map with anchor after document start token"), // same for scalars/seqs
-
     // directives
-    _("H7TQ-error"              , "should not accept extra words after directive"),
-    _("QLJ7-error"              , "tag directives should apply only to the next doc (?)"),
+    _("QLJ7-error"              , "%TAG should apply only to the next document"),
+    // tabs
+    _("Y79Y_004-error"          , "cannot use tab for indentation of block entry"),
+    _("Y79Y_006-error"          , "should not accept tab after ?"),
+    _("Y79Y_008-error"          , "should not accept tab after ?"),
+    _("Y79Y_007-error"          , "tab tokens"),
+    _("Y79Y_009-error"          , "should not accept tab after : succeeding ?"),
 
 
     //-------------------------------------------------------------------------
@@ -90,8 +55,6 @@ constexpr const AllowedFailure allowed_failures[] = {
     _("6BCT-in_yaml"            , "tabs tokens"),
     _("A2M4-in_yaml"            , "tabs tokens"),
     _("DC7X-in_yaml"            , "tabs tokens"),
-    _("DK95_00-in_yaml"         , "tabs tokens"),
-    _("DK95_04-in_yaml"         , "tabs tokens"),
     _("J3BT-in_yaml"            , "tabs tokens"),
     _("K54U-in_yaml"            , "tabs tokens"),
     _("Y79Y_010-in_yaml"        , "tabs tokens"),
@@ -106,26 +69,26 @@ constexpr const AllowedFailure allowed_failures[] = {
     // SECTION 4. Problems with the test suite spec.
 
     // malformed json in the test spec
-    _("35KP-in_json"            , "malformed JSON from multiple documents"),
-    _("5TYM-in_json"            , "malformed JSON from multiple documents"),
-    _("6XDY-in_json"            , "malformed JSON from multiple documents"),
-    _("6WLZ-in_json"            , "malformed JSON from multiple documents"),
-    _("6ZKB-in_json"            , "malformed JSON from multiple documents"),
-    _("7Z25-in_json"            , "malformed JSON from multiple documents"),
-    _("9DXL-in_json"            , "malformed JSON from multiple documents"),
-    _("9KAX-in_json"            , "malformed JSON from multiple documents"),
-    _("9WXW-in_json"            , "malformed JSON from multiple documents"),
-    _("JHB9-in_json"            , "malformed JSON from multiple documents"),
-    _("KSS4-in_json"            , "malformed JSON from multiple documents"),
-    _("L383-in_json"            , "malformed JSON from multiple documents"),
-    _("M7A3-in_json"            , "malformed JSON from multiple documents"),
-    _("PUW8-in_json"            , "malformed JSON from multiple documents"),
-    _("RZT7-in_json"            , "malformed JSON from multiple documents"),
-    _("U9NS-in_json"            , "malformed JSON from multiple documents"),
-    _("UT92-in_json"            , "malformed JSON from multiple documents"),
-    _("W4TN-in_json"            , "malformed JSON from multiple documents"),
+    _("35KP-in_json"            , "malformed JSON spec from multiple documents"),
+    _("5TYM-in_json"            , "malformed JSON spec from multiple documents"),
+    _("6XDY-in_json"            , "malformed JSON spec from multiple documents"),
+    _("6WLZ-in_json"            , "malformed JSON spec from multiple documents"),
+    _("6ZKB-in_json"            , "malformed JSON spec from multiple documents"),
+    _("7Z25-in_json"            , "malformed JSON spec from multiple documents"),
+    _("9DXL-in_json"            , "malformed JSON spec from multiple documents"),
+    _("9KAX-in_json"            , "malformed JSON spec from multiple documents"),
+    _("9WXW-in_json"            , "malformed JSON spec from multiple documents"),
+    _("JHB9-in_json"            , "malformed JSON spec from multiple documents"),
+    _("KSS4-in_json"            , "malformed JSON spec from multiple documents"),
+    _("L383-in_json"            , "malformed JSON spec from multiple documents"),
+    _("M7A3-in_json"            , "malformed JSON spec from multiple documents"),
+    _("PUW8-in_json"            , "malformed JSON spec from multiple documents"),
+    _("RZT7-in_json"            , "malformed JSON spec from multiple documents"),
+    _("U9NS-in_json"            , "malformed JSON spec from multiple documents"),
+    _("UT92-in_json"            , "malformed JSON spec from multiple documents"),
+    _("W4TN-in_json"            , "malformed JSON spec from multiple documents"),
     // malformed test spec?
-    _("4ABK-out_yaml-events"    , "out-yaml contains null, while in-yaml and events contain empty scalars"),
+    _("4ABK-out_yaml-events"    , "out-yaml test spec contains null, while in-yaml and events contain empty scalars"),
     _("4WA9-out_yaml-events"    , "out-yaml test spec is missing a --- document token, which is required in the events"),
     _("652Z-out_yaml-events"    , "out-yaml test spec is missing a --- document token, which is required in the events"),
     _("6CA3-emit_yaml"          , "out-yaml test spec is missing a --- document token, which is required in the events"),
@@ -195,26 +158,28 @@ constexpr const AllowedFailure container_key_cases[] = {
 
 };
 
+#undef _
 
-cspan<AllowedFailure> g_allowed_failures = allowed_failures;
-cspan<AllowedFailure> g_container_key_cases = container_key_cases;
 
-AllowedFailure is_failure_expected(csubstr casename)
+AllowedFailure is_failure_expected_(csubstr casename, cspan<AllowedFailure> afs)
 {
     _RYML_CHECK_BASIC(casename.not_empty());
-    for(AllowedFailure const& af : g_allowed_failures)
+    for(AllowedFailure const& af : afs)
         if(af.test_name == casename || casename.begins_with(af.test_name))
             return af;
     return {};
 }
+} // namespace anon
+
+
+AllowedFailure is_failure_expected(csubstr casename)
+{
+    return is_failure_expected_(casename, allowed_failures);
+}
 
 AllowedFailure case_has_container_keys(csubstr casename)
 {
-    _RYML_CHECK_BASIC(casename.not_empty());
-    for(AllowedFailure const& af : g_container_key_cases)
-        if(af.test_name == casename || casename.begins_with(af.test_name))
-            return af;
-    return {};
+    return is_failure_expected_(casename, container_key_cases);
 }
 
 

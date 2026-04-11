@@ -181,9 +181,10 @@ struct EventHandlerIntsState : public c4::yml::ParserState
 
 
 /** A parser event handler that creates a compact representation of
- * the YAML tree in a buffer of integers (see @ref ievt::EventFlags)
- * containing masks (to represent events) and offset+length (to
- * represent strings in the source buffer).
+ * the YAML tree in a contiguous buffer of integers. The integers are
+ * @ref ievt::EventFlags containing masks (to represent events),
+ * interleaved with offset+length (to represent strings in the source
+ * buffer).
  *
  * This is meant for use by other programming languages, and supports
  * container keys (unlike the ryml tree). It parses faster than the ryml
@@ -1084,7 +1085,7 @@ public:
 
     void set_key_anchor(csubstr anchor)
     {
-        _c4dbgpf("{}/{}: set_key_anchor", m_evt_pos, m_evt_size);
+        _c4dbgpf("{}/{}: set_key_anchor: {}", m_evt_pos, m_evt_size, anchor);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, !_has_any_(KEYREF));
         _enable_(c4::yml::KEYANCH);
         if(m_evt_pos + 3 < m_evt_size)
@@ -1097,7 +1098,7 @@ public:
     }
     void set_val_anchor(csubstr anchor)
     {
-        _c4dbgpf("{}/{}: set_val_anchor", m_evt_pos, m_evt_size);
+        _c4dbgpf("{}/{}: set_val_anchor: {}", m_evt_pos, m_evt_size, anchor);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, !_has_any_(VALREF));
         _enable_(c4::yml::VALANCH);
         if(m_evt_pos + 3 < m_evt_size)
@@ -1111,6 +1112,7 @@ public:
 
     void set_key_ref(csubstr ref)
     {
+        _c4dbgpf("{}/{}: set_key_ref: {}", m_evt_pos, m_evt_size, ref);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, ref.begins_with('*'));
         if(C4_UNLIKELY(_has_any_(KEYANCH)))
             _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "key cannot have both anchor and ref");
@@ -1119,6 +1121,7 @@ public:
     }
     void set_val_ref(csubstr ref)
     {
+        _c4dbgpf("{}/{}: set_val_ref: {}", m_evt_pos, m_evt_size, ref);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, ref.begins_with('*'));
         if(C4_UNLIKELY(_has_any_(VALANCH)))
             _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "val cannot have both anchor and ref");
@@ -1165,35 +1168,26 @@ public:
     /** @name YAML directive events */
     /** @{ */
 
-    void add_directive(csubstr directive)
+    void add_directive_yaml(csubstr yaml_version)
     {
-        _c4dbgpf("{}/{}: add directive ~~~{}~~~", m_evt_pos, m_evt_size, directive);
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, directive.begins_with('%'));
-        if(directive.begins_with("%TAG"))
-        {
-            const id_type pos = _num_tag_directives();
-            if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
-            TagDirective &td = m_tag_directives[pos];
-            if(C4_UNLIKELY(!td.create_from_str(directive)))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "failed to add directive");
-            td.next_node_id = (id_type)m_evt_pos;
-            _send_str_(td.handle, ievt::TAGD);
-            _send_str_(td.prefix, ievt::TAGV);
-        }
-        else if(directive.begins_with("%YAML"))
-        {
-            _c4dbgpf("%YAML directive! ignoring...: {}", directive);
-            if(C4_UNLIKELY(m_has_yaml_directive))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
-            m_has_yaml_directive = true;
-            csubstr rest = directive.sub(5).triml(' ');
-            _send_str_(rest, ievt::YAML);
-        }
-        else
-        {
-            _c4dbgpf("unknown directive! ignoring... {}", directive);
-        }
+        _c4dbgpf("{}/{}: %YAML directive! version={}", m_evt_pos, m_evt_size, yaml_version);
+        if(C4_UNLIKELY(m_has_yaml_directive))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
+        m_has_yaml_directive = true;
+        _send_str_(yaml_version, ievt::YAML);
+    }
+
+    void add_directive_tag(csubstr handle, csubstr prefix)
+    {
+        _c4dbgpf("{}/{}: %TAG directive! handle={} prefix={}", m_evt_pos, m_evt_size, handle, prefix);
+        const id_type pos = _num_tag_directives();
+        if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
+        TagDirective &td = m_tag_directives[pos];
+        td.create(handle, prefix);
+        td.next_node_id = (id_type)m_evt_pos;
+        _send_str_(td.handle, ievt::TAGD);
+        _send_str_(td.prefix, ievt::TAGV);
     }
 
     /** @} */
@@ -1208,12 +1202,12 @@ public:
         return C4_LIKELY(m_arena_pos <= m_arena.len) ? m_arena.sub(m_arena_pos) : m_arena.last(0);
     }
 
-    /** this may fail, in which case a an empty string is returned */
+    /** this may fail, in which case an empty string is returned */
     substr alloc_arena(size_t len)
     {
         substr s = arena_rem();
         if(C4_LIKELY(len <= s.len))
-            s = s.first(len);
+            s.len = len;
         else
             s.str = nullptr;
         m_arena_pos += len;

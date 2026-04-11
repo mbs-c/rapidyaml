@@ -205,26 +205,40 @@ csubstr from_tag(YamlTag_e tag)
     }
 }
 
-
-bool TagDirective::create_from_str(csubstr directive)
+bool is_valid_tag_handle(csubstr handle)
 {
-    _RYML_CHECK_BASIC(directive.begins_with("%TAG "));
-    directive = directive.sub(4);
-    if(!directive.begins_with(' '))
-        return false;
-    directive = directive.triml(' ');
-    size_t pos = directive.find(' ');
-    if(pos == npos)
-        return false;
-    handle = directive.first(pos);
-    directive = directive.sub(handle.len).triml(' ');
-    pos = directive.find(' ');
-    if(pos != npos)
-        directive = directive.first(pos);
-    prefix = directive;
+    if(handle.begins_with('!') && handle.ends_with('!'))
+    {
+        _c4dbgpf("handle={}", _prs(handle));
+        csubstr trimmed = handle.sub(1);
+        _c4dbgpf("trimmed0={}", _prs(trimmed, true));
+        if(trimmed.ends_with('!'))
+            trimmed = trimmed.offs(0, 1);
+        _c4dbgpf("trimmed1={}", _prs(trimmed, true));
+        // https://yaml.org/spec/1.2.2/#rule-ns-word-char
+        for(char c : trimmed)
+        {
+            bool ok = (c >= '0' && c <= '9')
+                || (c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || c == '-';
+            if(!ok)
+            {
+                _c4dbgpf("invalid handle character: '{}'", _c4prc(c));
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+void TagDirective::create(csubstr handle_, csubstr prefix_)
+{
+    handle = handle_;
+    prefix = prefix_;
     next_node_id = NONE;
     _c4dbgpf("%TAG: handle={} prefix={}", handle, prefix);
-    return true;
 }
 
 size_t TagDirective::transform(csubstr tag, substr output, Callbacks const& callbacks, bool with_brackets) const

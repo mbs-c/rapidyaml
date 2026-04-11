@@ -1159,7 +1159,7 @@ TEST(block_folded, test_suite_4QFQ_0)
     child2
 - ' child2
 
-'
+ '
 )";
     test_check_emit_check(yaml, [](Tree const &t){
         const csubstr v = " child2\n";
@@ -1180,7 +1180,7 @@ TEST(block_folded, test_suite_4QFQ_1)
     child2
 - ' child2
 
-'
+ '
 )";
     test_check_emit_check(yaml, [](Tree const &t){
         const csubstr v = " child2\n";
@@ -1802,12 +1802,54 @@ TEST(block_literal, indentation_indicator_0)
 TEST(block_literal, indentation_indicator_1)
 {
     {
+        SCOPED_TRACE("here");
+        Tree t;
+        ExpectError::check_error_parse(&t, [&t]{
+            t = parse_in_arena("--- >42949672950");
+        });
+    }
+    {
+        SCOPED_TRACE("here");
+        Tree t;
+        ExpectError::check_error_parse(&t, [&t]{
+            t = parse_in_arena("--- >0zza");
+        });
+    }
+    {
+        SCOPED_TRACE("here");
+        Tree t;
+        ExpectError::check_error_parse(&t, [&t]{
+            t = parse_in_arena("--- >zza");
+        });
+    }
+    {
+        SCOPED_TRACE("here");
+        Tree t;
+        ExpectError::check_error_parse(&t, [&t]{
+            t = parse_in_arena("--- >  zza");
+        });
+    }
+    {
+        SCOPED_TRACE("here");
+        Tree t;
+        ExpectError::check_error_parse(&t, [&t]{
+            t = parse_in_arena("--- >#");
+        });
+    }
+    {
+        SCOPED_TRACE("here");
+        Tree t = parse_in_arena("--- > # comment\n  a");
+        EXPECT_EQ(t.docref(0).val(), "a\n");
+    }
+    {
+        SCOPED_TRACE("here");
         Tree t;
         ExpectError::check_error_parse(&t, [&t]{
             t = parse_in_arena("--- >0");
         });
     }
     {
+        SCOPED_TRACE("here");
         Tree t;
         ExpectError::check_error_parse(&t, [&t]{
             t = parse_in_arena("--- >10");

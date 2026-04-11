@@ -115,7 +115,8 @@ struct EventTransformer
     fwds(set_key_tag)
     fwds(set_val_tag)
 
-    fwds(add_directive)
+    void add_directive_yaml(csubstr version) { handler.add_directive_yaml(transformer(version)); }
+    void add_directive_tag(csubstr handle, csubstr prefix) { handler.add_directive_tag(transformer(handle), transformer(prefix)); }
 
     #undef fwd
     #undef fwds
@@ -135,7 +136,9 @@ struct TransformToSourceBufferOrArena
             return src.sub(pos, s.len);
         }
         substr dst = handler->alloc_arena(s.len);
-        if(s.len) memcpy(dst.str, s.str, s.len);
+        _RYML_CHECK_BASIC(dst.str != nullptr && dst.len == s.len);
+        if(s.len)
+            memcpy(dst.str, s.str, s.len);
         return dst;
     }
 };
@@ -211,7 +214,7 @@ C4_NO_INLINE void test_engine_ints_from_events(EngineEvtTestCase const& test_cas
     std::string src = test_case.yaml;
     std::string arena;
     std::vector<int> ints((size_t)extra::estimate_events_ints_size(to_csubstr(src)));
-    arena.resize(src.size());
+    arena.resize(test_case.expected_events.size());
     handler.reset(to_substr(src), to_substr(arena), ints.data(), (int)ints.size());
     helper.transformer.src = to_csubstr(src);
     EventProducerFn<Helper> event_producer;
@@ -321,7 +324,7 @@ C4_NO_INLINE void test_engine_roundtrip_from_events(EngineEvtTestCase const& tes
         SCOPED_TRACE("test_invariants_orig");
         test_invariants(event_tree);
     }
-    std::string emitted0 = emitrs_yaml<std::string>(event_tree);
+    const std::string emitted0 = emitrs_yaml<std::string>(event_tree);
     EXPECT_EQ(test_case.expected_emitted, emitted0);
     std::string copy = emitted0;
     Tree after_roundtrip = parse_in_place(to_substr(copy), test_case.opts);

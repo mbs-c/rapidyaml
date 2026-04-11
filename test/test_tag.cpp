@@ -463,7 +463,6 @@ TEST(tag_directives, accepts_multiple_spaces)
 )"));
 }
 
-constexpr const auto errbasic = ExpectedErrorType::err_basic;
 constexpr const auto errparse = ExpectedErrorType::err_parse;
 constexpr const auto errvisit = ExpectedErrorType::err_visit;
 
@@ -490,7 +489,7 @@ TEST(tag_directives, errors_parsing_tags_1)
     test_fail_tag_parsing(R"(
 %TAG
 --- # Bulb here
-!m!light fluorescent)", errbasic);
+!m!light fluorescent)", errparse);
 }
 
 TEST(tag_directives, errors_parsing_tags_2)
@@ -498,7 +497,7 @@ TEST(tag_directives, errors_parsing_tags_2)
     test_fail_tag_parsing(R"(
 %TAG !m!
 --- # Bulb here
-!m!light fluorescent)", errbasic);
+!m!light fluorescent)", errparse);
 }
 
 TEST(tag_directives, errors_resolving_tags_1)
@@ -1050,7 +1049,7 @@ TEST(tags, EHF6)
 TEST(tags, fuzzcrash0)
 {
     Tree tree;
-    ExpectError::check_error_basic(&tree, [&]{
+    ExpectError::check_error_parse(&tree, [&]{
         parse_in_arena("%TAG !! " "\n"
                        "})"       "\n"
                        ""         "\n"
@@ -1232,9 +1231,9 @@ R"([
 
 ADD_CASE_TO_GROUP("tagged explicit sequence in map, std tags",
 R"(some_seq: !!its_type [
-!!int 0,
-!!str 0
-]
+ !!int 0,
+ !!str 0
+ ]
 )",
 N(MB, L{N(KP|SFM, "some_seq", TL("!!its_type", L{
               N(VP, TS("!!int", "0")),
@@ -1245,9 +1244,9 @@ N(MB, L{N(KP|SFM, "some_seq", TL("!!its_type", L{
 
 ADD_CASE_TO_GROUP("tagged explicit sequence in map, usr tags",
 R"(some_seq: !its_type [
-!int 0,
-!str 0
-]
+ !int 0,
+ !str 0
+ ]
 )",
 N(MB, L{N(KP|SFM, "some_seq", TL("!its_type", L{
               N(VP, TS("!int", "0")),

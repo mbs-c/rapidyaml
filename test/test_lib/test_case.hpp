@@ -4,6 +4,7 @@
 #ifdef RYML_SINGLE_HEADER
 #include <ryml_all.hpp>
 #else
+#include "c4/span.hpp"
 #include "c4/std/vector.hpp"
 #include "c4/std/string.hpp"
 #include "c4/format.hpp"
@@ -305,6 +306,8 @@ typedef enum {
     JSON_READ = (1<<4),
     HAS_CONTAINER_KEYS = (1<<5),
     HAS_MULTILINE_SCALAR = (1<<6),
+    NO_TREE_PARSE = (1<<7),
+    NO_COMPARE_EMITTED = (1<<8),
 } TestCaseFlags_e;
 
 
@@ -377,6 +380,27 @@ struct CaseData
     CaseDataLineEndings windows_style_json;
 };
 
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+struct bomspec
+{
+    csubstr name;
+    Encoding_e encoding;
+    csubstr bom;
+};
+extern const cspan<bomspec> bomspecs;
+
+inline std::string namefor(bomspec const& param)
+{
+    std::string s(param.name.str, param.name.len);
+    substr ss = to_substr(s);
+    ss.replace('!', '_');
+    ss.replace('-', '_');
+    return s;
+}
 
 } // namespace yml
 } // namespace c4

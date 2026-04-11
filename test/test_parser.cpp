@@ -219,6 +219,8 @@ void mklarge(Parser *p, Callbacks const& cb)
     new ((void*)p) Parser(evt_handler, p->options());
     p->reserve_stack(20); // cause an allocation
     p->reserve_locations(128); // cause an allocation
+    EXPECT_GE(p->stack_capacity(), 20);
+    EXPECT_GE(p->locations_capacity(), 128);
 }
 
 
@@ -255,12 +257,15 @@ TEST(Parser, reserve_capacity)
         EXPECT_EQ(cbt.num_allocs, 0u);
         EXPECT_EQ(cbt.num_deallocs, 0u);
         parser.reserve_stack(18);
+        EXPECT_GE(parser.stack_capacity(), 18);
         EXPECT_EQ(cbt.num_allocs, 1u);
         EXPECT_EQ(cbt.num_deallocs, 0u);
         parser.reserve_stack(24);
+        EXPECT_GE(parser.stack_capacity(), 24);
         EXPECT_EQ(cbt.num_allocs, 2u);
         EXPECT_EQ(cbt.num_deallocs, 1u);
         parser.reserve_stack(28);
+        EXPECT_GE(parser.stack_capacity(), 28);
         EXPECT_EQ(cbt.num_allocs, 3u);
         EXPECT_EQ(cbt.num_deallocs, 2u);
     }
@@ -279,6 +284,7 @@ TEST(Parser, reserve_locations)
         EXPECT_EQ(ts.num_allocs, 0u);
         EXPECT_EQ(ts.num_deallocs, 0u);
         parser.reserve_locations(128);
+        EXPECT_GE(parser.locations_capacity(), 128);
         EXPECT_EQ(ts.num_allocs, 1u);
         EXPECT_EQ(ts.num_deallocs, 0u);
         EXPECT_EQ(ts.alloc_size, 128u * sizeof(size_t));
