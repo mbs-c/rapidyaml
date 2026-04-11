@@ -10,6 +10,8 @@
 
 #include "c4/yml/detail/dbgprint.hpp"
 #include "c4/yml/filter_processor.hpp"
+#include "c4/yml/tag.hpp"
+
 #ifdef RYML_DBG
 #include <c4/dump.hpp>
 #include "c4/yml/detail/print.hpp"
@@ -1317,6 +1319,7 @@ bool ParseEngine<EventHandler>::_scan_scalar_plain_blck(ScannedScalar *C4_RESTRI
     case '!':
     case '\t':
     case ',':
+    case '%':
         return false;
     case '.':
         if(_is_doc_end(s))
@@ -4474,24 +4477,94 @@ void ParseEngine<EventHandler>::_handle_valref(csubstr alias)
 }
 
 template<class EventHandler>
-void ParseEngine<EventHandler>::_handle_directive(csubstr rem)
+bool ParseEngine<EventHandler>::_validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const
 {
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, rem.is_sub(m_evt_handler->m_curr->line_contents.rem), m_evt_handler->m_curr->pos);
-    const size_t pos = rem.find('#');
-    _c4dbgpf("handle_directive: pos={} rem={}", pos, rem);
-    if(pos == npos) // no comments
+    _c4assert(directive->begins_with("%YAML"));
+    size_t version_start = directive->first_not_of(" \t", 5);
+    if(version_start != npos)
     {
-        m_evt_handler->add_directive(rem);
-        _line_progressed(rem.len);
+        csubstr digits = "0123456789";
+        size_t major_end = directive->first_not_of(digits, version_start);
+        if(major_end != npos && directive->str[major_end] == '.') // single dot
+        {
+            size_t minor_end = directive->first_not_of(digits, major_end + 1);
+            if(minor_end == npos)
+                minor_end = directive->len;
+            _set_first_strict(*directive, minor_end);
+            *version = directive->range(version_start, minor_end);
+            _c4dbgpf("%YAML: version={} full={}", *version, _prs(*directive, true));
+            return true;
+        }
     }
-    else
+    return false;
+}
+
+template<class EventHandler>
+bool ParseEngine<EventHandler>::_validate_directive_tag(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT handle, csubstr *C4_RESTRICT prefix) const
+{
+    _c4assert(directive->begins_with("%TAG"));
+    csubstr whitespace = " \t";
+    size_t handle_start = directive->first_not_of(whitespace, 4);
+    if(handle_start != npos && directive->str[handle_start] == '!')
     {
-        csubstr to_comment = rem.first(pos);
-        csubstr trimmed = to_comment.trimr(" \t");
-        m_evt_handler->add_directive(trimmed);
-        _line_progressed(pos);
-        _skip_comment();
+        size_t handle_end = directive->first_of(whitespace, handle_start);
+        if(handle_end != npos)
+        {
+            size_t prefix_start = directive->first_not_of(whitespace, handle_end);
+            if(prefix_start != npos)
+            {
+                size_t prefix_end = directive->first_of(whitespace, prefix_start);
+                if(prefix_end == npos)
+                    prefix_end = directive->len;
+                _set_first_strict(*directive, prefix_end);
+                *handle = directive->range(handle_start, handle_end);
+                *prefix = directive->range(prefix_start, prefix_end);
+                _c4dbgpf("%TAG: handle={} prefix={} full={}", *handle, *prefix, _prs(*directive, true));
+                if(is_valid_tag_handle(*handle))
+                    return true;
+            }
+        }
     }
+    return false;
+}
+
+template<class EventHandler>
+void ParseEngine<EventHandler>::_handle_directive(csubstr directive)
+{
+    _c4dbgpf("handle_directive: rem={}", _prs(directive, true));
+    _c4assert(m_evt_handler->m_curr->line_contents.rem.begins_with('%'));
+    _c4assert(directive.str == m_evt_handler->m_curr->line_contents.rem.str);
+    auto isdirective = [](csubstr str, csubstr dir) {
+        if(str.begins_with(dir))
+        {
+            csubstr rest = str.sub(dir.len);
+            return (!rest.len || rest.str[0] == ' ' || rest.str[0] == '\t');
+        }
+        return false;
+    };
+    if(isdirective(directive, "%TAG"))
+    {
+        csubstr handle;
+        csubstr prefix;
+        if(C4_UNLIKELY(!_validate_directive_tag(&directive, &handle, &prefix)))
+            _c4err("invalid %TAG directive");
+        m_evt_handler->add_directive_tag(handle, prefix);
+    }
+    else if(isdirective(directive, "%YAML"))
+    {
+        csubstr version;
+        if(C4_UNLIKELY(!_validate_directive_yaml(&directive, &version)))
+            _c4err("invalid %YAML directive");
+        m_evt_handler->add_directive_yaml(version);
+    }
+    csubstr rem = m_evt_handler->m_curr->line_contents.rem;
+    size_t pos = rem.first_not_of(" \t", directive.len);
+    pos = pos != npos ? pos : rem.len;
+    _line_progressed(pos);
+    rem = rem.sub(pos);
+    _c4dbgpf("handle_directive: rest={}", _prs(rem));
+    if(rem.len && !rem.begins_with('#'))
+        _c4err("invalid tokens after directive");
 }
 
 template<class EventHandler>

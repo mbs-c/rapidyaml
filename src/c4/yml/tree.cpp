@@ -1438,45 +1438,21 @@ id_type Tree::add_tag_directive(TagDirective const& td)
 {
     _RYML_CHECK_BASIC_(m_callbacks, !td.handle.empty());
     _RYML_CHECK_BASIC_(m_callbacks, !td.prefix.empty());
-    _RYML_CHECK_BASIC_(m_callbacks, td.handle.begins_with('!'));
-    _RYML_CHECK_BASIC_(m_callbacks, td.handle.ends_with('!'));
-    // https://yaml.org/spec/1.2.2/#rule-ns-word-char
-    _RYML_CHECK_BASIC_(m_callbacks, td.handle == '!' || td.handle == "!!" || td.handle.trim('!').first_not_of("01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-") == npos);
+    _RYML_CHECK_BASIC_(m_callbacks, is_valid_tag_handle(td.handle));
     id_type pos = num_tag_directives();
     _RYML_CHECK_BASIC_(m_callbacks, pos < RYML_MAX_TAG_DIRECTIVES);
     m_tag_directives[pos] = td;
+    if(td.next_node_id == NONE)
+    {
+        m_tag_directives[pos].next_node_id = size();
+        if(!empty())
+        {
+            const id_type prev = size() - 1;
+            if(is_root(prev) && type(prev) != NOTYPE && !is_stream(prev))
+                ++m_tag_directives[pos].next_node_id;
+        }
+    }
     return pos;
-}
-
-namespace {
-bool _create_tag_directive_from_str(csubstr directive_, TagDirective *td, Tree *tree)
-{
-    _RYML_CHECK_BASIC_(tree->callbacks(), directive_.begins_with("%TAG "));
-    if(!td->create_from_str(directive_))
-    {
-        _RYML_ERR_BASIC_(tree->callbacks(), "invalid tag directive");
-    }
-    td->next_node_id = tree->size();
-    if(!tree->empty())
-    {
-        const id_type prev = tree->size() - 1;
-        if(tree->is_root(prev) && tree->type(prev) != NOTYPE && !tree->is_stream(prev))
-            ++td->next_node_id;
-    }
-    _c4dbgpf("%TAG: handle={} prefix={} next_node={}", td->handle, td->prefix, td->next_node_id);
-    return true;
-}
-} // namespace
-
-bool Tree::add_tag_directive(csubstr directive_)
-{
-    TagDirective td;
-    if(_create_tag_directive_from_str(directive_, &td, this))
-    {
-        add_tag_directive(td);
-        return true;
-    }
-    return false;
 }
 
 size_t Tree::resolve_tag(substr output, csubstr tag, id_type node_id) const

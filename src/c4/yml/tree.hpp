@@ -643,7 +643,6 @@ public:
     void normalize_tags_long();
 
     id_type num_tag_directives() const;
-    bool add_tag_directive(csubstr directive);
     id_type add_tag_directive(TagDirective const& td);
     void clear_tag_directives();
 

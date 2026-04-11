@@ -5330,8 +5330,9 @@ void sample_error_handler()
 void sample_error_basic()
 {
     auto cause_basic_error = []{
-        ryml::TagDirective tag = {};
-        return tag.create_from_str("%%%TAG abc");
+        ryml::Tree t;
+        ryml::TagDirective tagd = {}; // invalid, not filled
+        return t.add_tag_directive(tagd);
     };
     {
         ScopedErrorHandlerExample errh; // set the example callbacks (scoped)

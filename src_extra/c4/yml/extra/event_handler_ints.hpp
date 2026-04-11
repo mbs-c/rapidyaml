@@ -1168,35 +1168,26 @@ public:
     /** @name YAML directive events */
     /** @{ */
 
-    void add_directive(csubstr directive)
+    void add_directive_yaml(csubstr yaml_version)
     {
-        _c4dbgpf("{}/{}: add directive ~~~{}~~~", m_evt_pos, m_evt_size, directive);
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, directive.begins_with('%'));
-        if(directive.begins_with("%TAG"))
-        {
-            const id_type pos = _num_tag_directives();
-            if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
-            TagDirective &td = m_tag_directives[pos];
-            if(C4_UNLIKELY(!td.create_from_str(directive)))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "failed to add directive");
-            td.next_node_id = (id_type)m_evt_pos;
-            _send_str_(td.handle, ievt::TAGD);
-            _send_str_(td.prefix, ievt::TAGV);
-        }
-        else if(directive.begins_with("%YAML"))
-        {
-            _c4dbgpf("%YAML directive! ignoring...: {}", directive);
-            if(C4_UNLIKELY(m_has_yaml_directive))
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
-            m_has_yaml_directive = true;
-            csubstr rest = directive.sub(5).triml(' ');
-            _send_str_(rest, ievt::YAML);
-        }
-        else
-        {
-            _c4dbgpf("unknown directive! ignoring... {}", directive);
-        }
+        _c4dbgpf("{}/{}: %YAML directive! version={}", m_evt_pos, m_evt_size, yaml_version);
+        if(C4_UNLIKELY(m_has_yaml_directive))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
+        m_has_yaml_directive = true;
+        _send_str_(yaml_version, ievt::YAML);
+    }
+
+    void add_directive_tag(csubstr handle, csubstr prefix)
+    {
+        _c4dbgpf("{}/{}: %TAG directive! handle={} prefix={}", m_evt_pos, m_evt_size, handle, prefix);
+        const id_type pos = _num_tag_directives();
+        if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
+        TagDirective &td = m_tag_directives[pos];
+        td.create(handle, prefix);
+        td.next_node_id = (id_type)m_evt_pos;
+        _send_str_(td.handle, ievt::TAGD);
+        _send_str_(td.prefix, ievt::TAGV);
     }
 
     /** @} */

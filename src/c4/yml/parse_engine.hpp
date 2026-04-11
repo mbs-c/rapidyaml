@@ -661,6 +661,8 @@ private:
     void _handle_keyref(csubstr alias);
     void _handle_valref(csubstr alias);
     void _handle_directive(csubstr rem);
+    bool _validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const;
+    bool _validate_directive_tag(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT handle, csubstr *C4_RESTRICT prefix) const;
     bool _handle_bom();
     void _handle_bom(Encoding_e enc);
 
