@@ -95,8 +95,8 @@ typedef enum : DataType {
 
     // Directive flags
     YAML = (1 << 23),  ///< yaml directive: `\%YAML <version>`
-    TAGD = (1 << 24),  ///< tag directive, name : `\%TAG <name> .......`
-    TAGV = (1 << 25),  ///< tag directive, value: `\%TAG ...... <value>`
+    TAGH = (1 << 24),  ///< tag directive, handle: `\%TAG <handle> ........`
+    TAGP = (1 << 25),  ///< tag directive, prefix: `\%TAG ........ <prefix>`
 
     /// special flag to mark a scalar as unfiltered (when the parser
     /// is set not to filter).
@@ -112,7 +112,7 @@ typedef enum : DataType {
     /// following the event. For such events, the next two integers
     /// will provide respectively the string's offset and length. See
     /// also @ref PSTR.
-    WSTR = SCLR|ALIA|ANCH|TAG_|TAGD|TAGV|YAML,
+    WSTR = SCLR|ALIA|ANCH|TAG_|TAGH|TAGP|YAML,
 
 } EventFlags;
 
@@ -1186,8 +1186,8 @@ public:
         TagDirective &td = m_tag_directives[pos];
         td.create(handle, prefix);
         td.next_node_id = (id_type)m_evt_pos;
-        _send_str_(td.handle, ievt::TAGD);
-        _send_str_(td.prefix, ievt::TAGV);
+        _send_str_(handle, ievt::TAGH);
+        _send_str_(prefix, ievt::TAGP);
     }
 
     /** @} */
