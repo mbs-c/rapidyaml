@@ -470,14 +470,14 @@ public:
     EventHandlerInts(c4::yml::Callbacks const& cb)
         : EventHandlerStack(cb)
     {
-        reset(csubstr{}, substr{}, nullptr, 0);
+        reset(substr{}, substr{}, nullptr, 0);
     }
     EventHandlerInts()
         : EventHandlerInts(c4::yml::get_callbacks())
     {
     }
 
-    void reset(csubstr str, substr arena, ievt::DataType *dst, int32_t dst_size)
+    void reset(substr str, substr arena, ievt::DataType *dst, int32_t dst_size)
     {
         _stack_reset_root();
         m_curr->flags |= c4::yml::RUNK|c4::yml::RTOP;
@@ -531,7 +531,7 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr src)
+    void start_parse(const char* filename, substr src)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, src.str == m_src.str);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, src.len == m_src.len);

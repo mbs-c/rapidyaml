@@ -251,7 +251,7 @@ size_t transform_tag(substr output, csubstr handle, csubstr prefix, csubstr tag,
         if(C4_UNLIKELY(!rest.ends_with('>')))
         {
             errmsg = "malformed tag";
-            goto err;
+            goto err; // NOLINT
         }
         rest = rest.offs(1, 1);
         if(rest.begins_with(prefix))
@@ -298,7 +298,7 @@ size_t transform_tag(substr output, csubstr handle, csubstr prefix, csubstr tag,
             if(C4_UNLIKELY(pos+1 >= next || pos+1+2 > next))
             {
                 errmsg = "tag error";
-                goto err;
+                goto err; // NOLINT
             }
             size_t delta = next - (pos+1);
             len -= delta;
@@ -321,13 +321,13 @@ size_t transform_tag(substr output, csubstr handle, csubstr prefix, csubstr tag,
                 if(C4_UNLIKELY(pos+1 >= next || pos+1+2 > next))
                 {
                     errmsg = "tag error";
-                    goto err;
+                    goto err; // NOLINT
                 }
                 uint8_t val;
                 if(C4_UNLIKELY(!read_hex(rest.range(pos+1, next), &val) || val > 127))
                 {
                     errmsg = "invalid URI character";
-                    goto err;
+                    goto err; // NOLINT
                 }
                 appendstr(rest.range(prev, pos));
                 appendchar(static_cast<char>(val));
@@ -353,7 +353,6 @@ err:
     {
         _RYML_ERR_BASIC_(callbacks, errmsg);
     }
-    return 0; // LCOV_EXCL_LINE
 }
 
 
@@ -510,15 +509,11 @@ csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type i
     *bufsz = len;
     if(len <= buf.len)
         return buf.first(len);
-    else
-    {
-        _c4dbgp("tagd: not enough room");
-        csubstr ret;
-        ret.str = nullptr;
-        ret.len = len;
-        return ret;
-    }
-    return tag;
+    _c4dbgp("tagd: not enough room");
+    csubstr ret;
+    ret.str = nullptr;
+    ret.len = len;
+    return ret;
 }
 
 } // namespace yml

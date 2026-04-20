@@ -95,7 +95,7 @@ public:
 
     Callbacks const& callbacks() const { return m_stack.m_callbacks; }
 
-    C4_ALWAYS_INLINE TagDirectives& tag_directives() { return m_tree->m_tag_directives; }
+    C4_ALWAYS_INLINE TagDirectives& tag_directives() { return m_tree->m_tag_directives; } // NOLINT(readability-make-member-function-const)
 
     /** @} */
 
@@ -104,7 +104,7 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr ymlsrc)
+    void start_parse(const char* filename, substr ymlsrc)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree != nullptr);
         this->_stack_start_parse(filename, ymlsrc);
@@ -557,7 +557,7 @@ public:
     /** @name YAML directive events */
     /** @{ */
 
-    void add_directive_yaml(csubstr yaml_version)
+    void add_directive_yaml(csubstr yaml_version) // NOLINT(readability-convert-member-functions-to-static)
     {
         _c4dbgpf("%YAML directive! version={}", yaml_version);
         (void)yaml_version;
@@ -587,7 +587,7 @@ public:
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree);
         return m_tree->m_arena.sub(m_tree->m_arena_pos);
     }
-    substr alloc_arena(size_t len)
+    substr alloc_arena(size_t len) // NOLINT(readability-make-member-function-const)
     {
         return m_tree->alloc_arena(len);
     }

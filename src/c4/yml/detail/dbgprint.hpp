@@ -151,16 +151,20 @@ struct _prs
 inline C4_NO_INLINE size_t to_chars(substr buf, _prs const& v)
 {
     csubstr s = v.subject;
-    csubstr ellipsis = "";
-    if(v.maxsize < s.len)
+    if(C4_LIKELY(s.str != nullptr))
     {
-        s = s.first(v.maxsize);
-        ellipsis = "...";
+        csubstr ellipsis = "";
+        if(v.maxsize < s.len)
+        {
+            s = s.first(v.maxsize);
+            ellipsis = "...";
+        }
+        return !v.escape ?
+            c4::format(buf, "[{}]~~~{}{}~~~", v.subject.len, s, ellipsis)
+            :
+            c4::format(buf, "[{}]~~~{}{}~~~", v.subject.len, escaped_scalar(s, v.keep_newlines), ellipsis);
     }
-    return !v.escape ?
-        c4::format(buf, "[{}]~~~{}{}~~~", v.subject.len, s, ellipsis)
-        :
-        c4::format(buf, "[{}]~~~{}{}~~~", v.subject.len, escaped_scalar(s, v.keep_newlines), ellipsis);
+    return c4::format(buf, "[{}](out of size)", v.subject.len);
 }
 // LCOV_EXCL_STOP
 template<class SinkPfn>
@@ -170,25 +174,34 @@ C4_NO_INLINE size_t dump(SinkPfn &&sinkfn, substr buf, _prs const& v)
     size_t sz = to_chars(buf, s.len);
     if(sz <= buf.len)
     {
-        csubstr ellipsis = "";
-        if(v.maxsize < s.len)
+        if(C4_LIKELY(s.str != nullptr))
         {
-            s = s.first(v.maxsize);
-            ellipsis = "...";
-        }
-        std::forward<SinkPfn>(sinkfn)("[");
-        std::forward<SinkPfn>(sinkfn)(buf.first(sz));
-        std::forward<SinkPfn>(sinkfn)("]~~~");
-        if(!v.escape)
-        {
-            std::forward<SinkPfn>(sinkfn)(s);
+            csubstr ellipsis = "";
+            if(v.maxsize < s.len)
+            {
+                s = s.first(v.maxsize);
+                ellipsis = "...";
+            }
+            std::forward<SinkPfn>(sinkfn)("[");
+            std::forward<SinkPfn>(sinkfn)(buf.first(sz));
+            std::forward<SinkPfn>(sinkfn)("]~~~");
+            if(!v.escape)
+            {
+                std::forward<SinkPfn>(sinkfn)(s);
+            }
+            else
+            {
+                dump(std::forward<SinkPfn>(sinkfn), buf, escaped_scalar(s, v.keep_newlines));
+            }
+            std::forward<SinkPfn>(sinkfn)(ellipsis);
+            std::forward<SinkPfn>(sinkfn)("~~~");
         }
         else
         {
-            dump(std::forward<SinkPfn>(sinkfn), buf, escaped_scalar(s, v.keep_newlines));
+            std::forward<SinkPfn>(sinkfn)("[");
+            std::forward<SinkPfn>(sinkfn)(buf.first(sz));
+            std::forward<SinkPfn>(sinkfn)("](out of size)");
         }
-        std::forward<SinkPfn>(sinkfn)(ellipsis);
-        std::forward<SinkPfn>(sinkfn)("~~~");
     }
     return sz; // we require this space in the buffer
 }

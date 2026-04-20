@@ -336,10 +336,10 @@ public:
     Callbacks const& callbacks() const { _RYML_ASSERT_BASIC(m_evt_handler); return m_evt_handler->m_stack.m_callbacks; }
 
     /** Get the name of the latest file parsed by this object. */
-    csubstr filename() const { return m_file; }
+    csubstr filename() const { return m_evt_handler->m_curr ? m_evt_handler->m_curr->pos.name : csubstr{}; }
 
     /** Get the latest YAML buffer parsed by this object. */
-    csubstr source() const { return m_buf; }
+    csubstr source() const { return m_evt_handler ? m_evt_handler->m_src : csubstr{}; }
 
     /** Get the encoding of the latest YAML buffer parsed by this object.
      * If no encoding was specified, UTF8 is assumed as per the YAML standard. */
@@ -522,6 +522,7 @@ private:
     void  _start_doc_suddenly();
     void  _end_doc_suddenly();
     void  _end_doc_suddenly__pop();
+    void  _check_trailing_doc_token();
     void  _end_stream();
 
     void  _set_indentation(size_t indentation) noexcept;
@@ -593,6 +594,8 @@ private:
     void _relocate_arena(csubstr prev_arena, substr next_arena, substr *other_string=nullptr);
 
 private:
+
+    C4_ALWAYS_INLINE substr _buf() const noexcept { return m_evt_handler->m_src; }
 
     C4_ALWAYS_INLINE bool has_all(ParserFlag_t f) const noexcept { return (m_evt_handler->m_curr->flags & f) == f; }
     C4_ALWAYS_INLINE bool has_any(ParserFlag_t f) const noexcept { return (m_evt_handler->m_curr->flags & f) != 0; }
@@ -673,9 +676,6 @@ private:
 
     ParserOptions m_options;
 
-    csubstr m_file;
-    substr  m_buf;
-
 public:
 
     /** @cond dev */
@@ -704,7 +704,6 @@ private:
     size_t *m_newline_offsets;
     size_t  m_newline_offsets_size;
     size_t  m_newline_offsets_capacity;
-    csubstr m_newline_offsets_buf;
 
 public:
 

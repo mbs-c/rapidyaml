@@ -132,7 +132,7 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr src)
+    void start_parse(const char* filename, substr src)
     {
         this->_stack_start_parse(filename, src);
     }

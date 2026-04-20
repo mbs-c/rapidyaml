@@ -15,7 +15,7 @@
 #ifndef _C4_YML_COMMON_HPP_
 #include "c4/yml/common.hpp"
 #endif
-#ifndef C4_YML_NODE_TYPE_HPP_
+#ifndef _C4_YML_NODE_TYPE_HPP_
 #include "c4/yml/node_type.hpp"
 #endif
 #ifndef _C4_YML_TAG_HPP_

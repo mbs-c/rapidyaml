@@ -1,5 +1,5 @@
-#ifndef C4_YML_NODE_TYPE_HPP_
-#define C4_YML_NODE_TYPE_HPP_
+#ifndef _C4_YML_NODE_TYPE_HPP_
+#define _C4_YML_NODE_TYPE_HPP_
 
 #ifndef _C4_YML_COMMON_HPP_
 #include "c4/yml/common.hpp"
@@ -278,4 +278,4 @@ RYML_EXPORT inline C4_NO_INLINE bool scalar_is_null(csubstr s) noexcept
 C4_SUPPRESS_WARNING_MSVC_POP
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
-#endif /* C4_YML_NODE_TYPE_HPP_ */
+#endif /* _C4_YML_NODE_TYPE_HPP_ */

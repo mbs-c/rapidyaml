@@ -46,7 +46,7 @@ public:
     detail::stack<state> m_stack;
     state *C4_RESTRICT   m_curr;    ///< current stack level: top of the stack. cached here for easier access.
     state *C4_RESTRICT   m_parent;  ///< parent of the current stack level.
-    csubstr              m_src;
+    substr               m_src;
 
 protected:
 
@@ -55,7 +55,7 @@ protected:
 
 protected:
 
-    void _stack_start_parse(const char *filename, csubstr ymlsrc)
+    void _stack_start_parse(const char *filename, substr ymlsrc)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_curr != nullptr);
         m_curr->start_parse(filename, m_curr->node_id);
@@ -64,7 +64,6 @@ protected:
 
     void _stack_finish_parse()
     {
-        m_src = {};
     }
 
 protected:
@@ -112,13 +111,17 @@ protected:
 
 protected:
 
-    // undefined at the end
+    // undefined below
     #define _has_any_(bits) (static_cast<HandlerImpl const* C4_RESTRICT>(this)->template _has_any__<bits>())
+
+    // FIXME. Not happy about where these functions are. They should
+    // be defined and called by the parser, passing the bool result to
+    // begin_doc()/end_doc() as well as begin_doc_expl()/end_doc_expl().
 
     bool _stack_should_push_on_begin_doc() const
     {
         const bool is_root = (m_stack.size() == 1u);
-        return is_root && (_has_any_(DOC|VAL|MAP|SEQ) || m_curr->has_children);
+        return is_root && (m_curr->has_children || _has_any_(DOC|VAL|MAP|SEQ));
     }
 
     bool _stack_should_pop_on_end_doc() const
@@ -126,24 +129,6 @@ protected:
         const bool is_root = (m_stack.size() == 1u);
         return !is_root && _has_any_(DOC);
     }
-
-public:
-
-    /** Check whether the current parse tokens are trailing on the
-     * previous doc, and raise an error if they are. This function is
-     * called by the parse engine (not the event handler) before a doc
-     * is started. */
-    void check_trailing_doc_token() const
-    {
-        const bool is_root = (m_stack.size() == 1u);
-        const bool isndoc = (m_curr->flags & NDOC) != 0;
-        const bool suspicious = _has_any_(MAP|SEQ|VAL);
-        _c4dbgpf("target={} isroot={} suspicious={} ndoc={}", m_curr->node_id, is_root, suspicious, isndoc);
-        if((is_root || _has_any_(DOC)) && suspicious && !isndoc)
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "parse error");
-    }
-
-protected:
 
     #undef _has_any_
 
