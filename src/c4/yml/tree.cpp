@@ -1469,6 +1469,7 @@ size_t Tree::resolve_tag(substr output, csubstr tag, id_type node_id) const
 namespace {
 csubstr _transform_tag(Tree *t, csubstr tag, id_type node, id_type doc_id)
 {
+    (void)node;
     _c4dbgpf("doc={} [{}] resolving tag ~~~{}~~~", doc_id, node, tag);
     size_t required_size = t->resolve_tag(substr{}, tag, doc_id);
     if(!required_size)

@@ -531,11 +531,11 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr src, c4::yml::detail::pfn_relocate_arena relocate_arena, void *relocate_arena_data)
+    void start_parse(const char* filename, csubstr src)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, src.str == m_src.str);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, src.len == m_src.len);
-        this->_stack_start_parse(filename, src, relocate_arena, relocate_arena_data);
+        this->_stack_start_parse(filename, src);
     }
 
     void finish_parse()

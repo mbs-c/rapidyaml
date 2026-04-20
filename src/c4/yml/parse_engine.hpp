@@ -590,8 +590,7 @@ private:
     void   _scan_line();
     substr _peek_next_line(size_t pos=npos) const;
 
-    void _relocate_arena(csubstr prev_arena, substr next_arena);
-    static void _s_relocate_arena(void*, csubstr prev_arena, substr next_arena);
+    void _relocate_arena(csubstr prev_arena, substr next_arena, substr *other_string=nullptr);
 
 private:
 

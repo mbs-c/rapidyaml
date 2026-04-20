@@ -104,10 +104,10 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr ymlsrc, detail::pfn_relocate_arena relocate_arena, void *relocate_arena_data)
+    void start_parse(const char* filename, csubstr ymlsrc)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree != nullptr);
-        this->_stack_start_parse(filename, ymlsrc, relocate_arena, relocate_arena_data);
+        this->_stack_start_parse(filename, ymlsrc);
     }
 
     void finish_parse()

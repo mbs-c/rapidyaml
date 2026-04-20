@@ -448,55 +448,44 @@ void ParseEngine<EventHandler>::_reset()
 //-----------------------------------------------------------------------------
 
 template<class EventHandler>
-void ParseEngine<EventHandler>::_relocate_arena(csubstr prev_arena, substr next_arena)
+void ParseEngine<EventHandler>::_relocate_arena(csubstr prev_arena, substr next_arena, substr *other)
 {
+    _c4dbgp("relocate to new arena");
     #define _ryml_relocate(s)                                   \
     if((s).is_sub(prev_arena))                                  \
     {                                                           \
         (s).str = next_arena.str + ((s).str - prev_arena.str);  \
     }
     _ryml_relocate(m_buf);
+    for(ParserState &st : m_evt_handler->m_stack)
+    {
+        _ryml_relocate(st.line_contents.rem);
+        _ryml_relocate(st.line_contents.full);
+    }
     _ryml_relocate(m_newline_offsets_buf);
     for(size_t i = 0; i < m_pending_tags.num_entries; ++i)
-    {
         _ryml_relocate(m_pending_tags.annotations[i].str); // LCOV_EXCL_LINE
-    }
     for(size_t i = 0; i < m_pending_anchors.num_entries; ++i)
-    {
         _ryml_relocate(m_pending_anchors.annotations[i].str); // LCOV_EXCL_LINE
-    }
     TagDirectives &tds = m_evt_handler->tag_directives();
     for(size_t i = 0, sz = tds.size(); i < sz; ++i)
     {
         _ryml_relocate(tds.m_directives[i].handle); // LCOV_EXCL_LINE
         _ryml_relocate(tds.m_directives[i].prefix); // LCOV_EXCL_LINE
     }
+    if(other && other->is_sub(prev_arena))
+        _ryml_relocate(*other); // LCOV_EXCL_LINE
     #undef _ryml_relocate
 }
 
 template<class EventHandler>
-void ParseEngine<EventHandler>::_s_relocate_arena(void* data, csubstr prev_arena, substr next_arena)
-{
-    ((ParseEngine*)data)->_relocate_arena(prev_arena, next_arena);
-}
-
-template<class EventHandler>
-substr ParseEngine<EventHandler>::_alloc_arena(size_t len, substr *relocated)
+substr ParseEngine<EventHandler>::_alloc_arena(size_t len, substr *other)
 {
     csubstr prev = m_evt_handler->arena();
     substr out = m_evt_handler->alloc_arena(len);
     substr curr = m_evt_handler->arena();
     if(curr.str != prev.str)
-    {
-        _c4dbgp("relocate to new arena");
-        m_evt_handler->_stack_relocate_to_new_arena(prev, curr);
-        if(relocated && prev.is_super(*relocated))
-        {
-            _c4dbgp("relocate str to new arena");
-            if(curr.str != prev.str)
-                *relocated = m_evt_handler->_stack_relocate_to_new_arena(*relocated, prev, curr);
-        }
-    }
+        _relocate_arena(prev, curr, other);
     return out;
 }
 
@@ -8529,7 +8518,7 @@ void ParseEngine<EventHandler>::parse_json_in_place_ev(csubstr filename, substr 
     m_file = filename;
     m_buf = src;
     _reset();
-    m_evt_handler->start_parse(filename.str, src, &_s_relocate_arena, this);
+    m_evt_handler->start_parse(filename.str, src);
     m_evt_handler->begin_stream();
     while( ! _finished_file())
     {
@@ -8573,7 +8562,7 @@ void ParseEngine<EventHandler>::parse_in_place_ev(csubstr filename, substr src)
     m_file = filename;
     m_buf = src;
     _reset();
-    m_evt_handler->start_parse(filename.str, src, &_s_relocate_arena, this);
+    m_evt_handler->start_parse(filename.str, src);
     m_evt_handler->begin_stream();
     while( ! _finished_file())
     {

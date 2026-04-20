@@ -31,10 +31,6 @@ namespace yml {
 /** @addtogroup doc_event_handlers
  * @{ */
 
-namespace detail {
-using pfn_relocate_arena = void (*)(void*, csubstr prev_arena, substr next_arena);
-} // detail
-
 /** Use this class a base of implementations of event handler to
  * simplify the stack logic. */
 template<class HandlerImpl, class HandlerState>
@@ -44,32 +40,25 @@ struct EventHandlerStack
                   "ParserState must be a base of HandlerState");
 
     using state = HandlerState;
-    using pfn_relocate_arena = detail::pfn_relocate_arena;
 
 public:
 
     detail::stack<state> m_stack;
     state *C4_RESTRICT   m_curr;    ///< current stack level: top of the stack. cached here for easier access.
     state *C4_RESTRICT   m_parent;  ///< parent of the current stack level.
-    pfn_relocate_arena   m_relocate_arena; ///< callback when the arena gets relocated
-    void *               m_relocate_arena_data;
     csubstr              m_src;
 
 protected:
 
-    EventHandlerStack() : m_stack(), m_curr(), m_parent(), m_relocate_arena(), m_relocate_arena_data(), m_src() {}
-    EventHandlerStack(Callbacks const& cb) : m_stack(cb), m_curr(), m_parent(), m_relocate_arena(), m_relocate_arena_data(), m_src() {}
+    EventHandlerStack() : m_stack(), m_curr(), m_parent(), m_src() {}
+    EventHandlerStack(Callbacks const& cb) : m_stack(cb), m_curr(), m_parent(), m_src() {}
 
 protected:
 
-    void _stack_start_parse(const char *filename, csubstr ymlsrc, pfn_relocate_arena relocate_arena, void *relocate_arena_data)
+    void _stack_start_parse(const char *filename, csubstr ymlsrc)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_curr != nullptr);
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, relocate_arena != nullptr);
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, relocate_arena_data != nullptr);
         m_curr->start_parse(filename, m_curr->node_id);
-        m_relocate_arena = relocate_arena;
-        m_relocate_arena_data = relocate_arena_data;
         m_src = ymlsrc;
     }
 
@@ -136,30 +125,6 @@ protected:
     {
         const bool is_root = (m_stack.size() == 1u);
         return !is_root && _has_any_(DOC);
-    }
-
-public:
-
-    void _stack_relocate_to_new_arena(csubstr prev, substr curr)
-    {
-        for(state &st : m_stack)
-        {
-            if(st.line_contents.rem.is_sub(prev))
-                st.line_contents.rem = _stack_relocate_to_new_arena(st.line_contents.rem, prev, curr);
-            if(st.line_contents.full.is_sub(prev))
-                st.line_contents.full = _stack_relocate_to_new_arena(st.line_contents.full, prev, curr);
-        }
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_relocate_arena != nullptr);
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_relocate_arena_data != nullptr);
-        m_relocate_arena(m_relocate_arena_data, prev, curr);
-    }
-
-    substr _stack_relocate_to_new_arena(csubstr s, csubstr prev, substr curr)
-    {
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, prev.is_super(s));
-        substr out{curr.str + (s.str - prev.str), s.len};
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, curr.is_super(out));
-        return out;
     }
 
 public:

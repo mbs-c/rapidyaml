@@ -605,10 +605,6 @@ TEST(Parser, alloc_arena)
     Tree tree;
     Parser::handler_type evt_handler = {};
     Parser parser(&evt_handler);
-    int data = 0;
-    auto relocate = [](void*, csubstr prev, substr next_arena){
-        EXPECT_FALSE(prev.overlaps(next_arena));
-    };
     evt_handler.reset(&tree, tree.root_id());
     evt_handler.start_parse("filename", substr{});
     substr bufa = evt_handler.alloc_arena(64);

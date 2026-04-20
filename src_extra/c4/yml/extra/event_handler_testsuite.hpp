@@ -65,7 +65,6 @@ public:
     extra::string_vector m_val_buffers;
     id_type m_curr_doc;
     extra::string m_arena;
-    csubstr m_src;
     TagDirectives m_tag_directives;
 
     // undefined at the end
@@ -103,7 +102,7 @@ public:
     /** @name construction and resetting
      * @{ */
 
-    EventHandlerTestSuite(EventSink *sink, Callbacks const& cb) : EventHandlerStack(cb), m_sink(sink), m_val_buffers(), m_curr_doc(), m_arena(), m_src(), m_tag_directives()
+    EventHandlerTestSuite(EventSink *sink, Callbacks const& cb) : EventHandlerStack(cb), m_sink(sink), m_val_buffers(), m_curr_doc(), m_arena(), m_tag_directives()
     {
         reset();
     }
@@ -133,9 +132,9 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr src, detail::pfn_relocate_arena relocate_arena, void *relocate_arena_data)
+    void start_parse(const char* filename, csubstr src)
     {
-        this->_stack_start_parse(filename, src, relocate_arena, relocate_arena_data);
+        this->_stack_start_parse(filename, src);
     }
 
     void finish_parse()
