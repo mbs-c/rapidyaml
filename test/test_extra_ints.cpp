@@ -69,8 +69,8 @@ const bool needs_filter = true;
 const IntEventsCase test_cases[] = {
     // make the declarations shorter
     #define e(...) IntEventWithScalar{__VA_ARGS__}
-    #define tc_(opts, ys, ...) IntEventsCase{__FILE__, __LINE__, opts, ys, std::initializer_list<IntEventWithScalar>(__VA_ARGS__)}
-    #define tc(ys, ...) tc_(ParserOptions{}, ys, __VA_ARGS__)
+    #define tc_(opts, ys, ...) IntEventsCase{__FILE__, __LINE__, opts.resolve_tags(true), ys, std::initializer_list<IntEventWithScalar>(__VA_ARGS__)}
+    #define tc(ys, ...) tc_(ParserOptions{}.resolve_tags(true), ys, __VA_ARGS__)
     // case -------------------------------------------------
     tc("!yamlscript/v0/bare\n--- !code\n42\n",
        {
@@ -502,11 +502,11 @@ const IntEventsCase test_cases[] = {
            e(VAL_|SCLR|PLAI|PSTR,  40,  9, "something"),
            e(ESEQ|PSTR),
            e(EDOC|EXPL),
-           e(TAGD,                 59,  3, "!m!"),
-           e(TAGV|PSTR,            63, 15, "!extraordinary-"),
+           e(TAGH,                 59,  3, "!m!"),
+           e(TAGP|PSTR,            63, 15, "!extraordinary-"),
            e(BDOC|EXPL|PSTR),
            e(VAL_|BSEQ|BLCK),
-           e(VAL_|TAG_|AREN,        0, 20, "!extraordinary-light"),
+           e(VAL_|TAG_|AREN,        0, 22, "<!extraordinary-light>"),
            e(VAL_|SCLR|PLAI|PSTR,  94,  5, "green"),
            e(VAL_|TAG_|PSTR,      102,  5, "!!int"),
            e(VAL_|SCLR|PLAI|PSTR, 108,  1, "2"),

@@ -145,10 +145,10 @@ ENGINE_TEST(DocStreamImplicitDocFirstTag,
             ,
             "+STR\n"
             "+DOC\n"
-            "=VAL <tag:yaml.org,2002:str> :\n"
+            "=VAL <!!str> :\n"
             "-DOC\n"
             "+DOC ---\n"
-            "=VAL <tag:yaml.org,2002:str> :\n"
+            "=VAL <!!str> :\n"
             "-DOC\n"
             "-STR\n")
 {

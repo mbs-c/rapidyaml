@@ -382,7 +382,7 @@ void parse_events_to_tree(csubstr src, Tree *C4_RESTRICT tree_)
                 }
             }
             if(tag)
-                tree.set_val_tag(node, normalize_tag(tag));
+                tree.set_val_tag(node, tag);
             if(anchor)
                 tree.set_val_anchor(node, anchor);
         }
@@ -457,7 +457,7 @@ void parse_events_to_tree(csubstr src, Tree *C4_RESTRICT tree_)
                 }
             }
             if(tag)
-                tree.set_val_tag(node, normalize_tag(tag));
+                tree.set_val_tag(node, tag);
             if(anchor)
                 tree.set_val_anchor(node, anchor);
         }

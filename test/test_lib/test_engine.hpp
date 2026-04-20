@@ -29,7 +29,7 @@ struct OptionalScalar
     bool was_set = false;
     operator csubstr() const { return get(); }
     operator bool() const { return was_set; }
-    void operator= (csubstr v) { val = v; was_set = true; }
+    void operator= (csubstr v) { val = v; was_set = true; } // NOLINT
     csubstr get() const { _RYML_ASSERT_BASIC(was_set); return val; }
     csubstr maybe_get() const { return was_set ? val : csubstr(""); }
 };
@@ -48,6 +48,9 @@ void test_compare_events(csubstr ref_evts,
 
 struct EngineEvtTestCase
 {
+    const char *file;
+    int line;
+    extra::string fileline;
     ParserOptions opts;
     TestCaseFlags_e test_case_flags;
     Location expected_error_location;
@@ -59,22 +62,204 @@ struct EngineEvtTestCase
 
 public:
 
-    EngineEvtTestCase(ParserOptions opts_,                                        std::string s               , std::string ev) : opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(s           ), expected_emitted(std::move(s)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) {}
-    EngineEvtTestCase(ParserOptions opts_,                                        std::string p, std::string e, std::string ev) : opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) {}
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf,                    std::string p, std::string e, std::string ev) : opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) {}
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf,                    std::string p               , std::string ev) : opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) {}
-    EngineEvtTestCase(ParserOptions opts_,                     Location linecol_, std::string p               , std::string ev) : opts(opts_), test_case_flags(  ), expected_error_location(linecol_), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _RYML_ASSERT_BASIC(linecol_); }
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p, std::string e, std::string ev) : opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _RYML_ASSERT_BASIC(linecol_); }
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p               , std::string ev) : opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _RYML_ASSERT_BASIC(linecol_); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_,                                        std::string s               , std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(s           ), expected_emitted(std::move(s)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_,                                        std::string p, std::string e, std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf,                    std::string p, std::string e, std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf,                    std::string p               , std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_,                     Location linecol_, std::string p               , std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(  ), expected_error_location(linecol_), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p, std::string e, std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p               , std::string ev) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(), expected_ints_enabled(false) { _mkfileline(); }
 
-    EngineEvtTestCase(ParserOptions opts_,                                        std::string s               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(s           ), expected_emitted(std::move(s)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) {}
-    EngineEvtTestCase(ParserOptions opts_,                                        std::string p, std::string e, std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) {}
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf,                    std::string p, std::string e, std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) {}
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf,                    std::string p               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) {}
-    EngineEvtTestCase(ParserOptions opts_,                     Location linecol_, std::string p               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(  ), expected_error_location(linecol_), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _RYML_ASSERT_BASIC(linecol_); }
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p, std::string e, std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _RYML_ASSERT_BASIC(linecol_); }
-    EngineEvtTestCase(ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(           p), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _RYML_ASSERT_BASIC(linecol_); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_,                                        std::string s               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(s           ), expected_emitted(std::move(s)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_,                                        std::string p, std::string e, std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(  ), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf,                    std::string p, std::string e, std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf,                    std::string p               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(        ), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_,                     Location linecol_, std::string p               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(  ), expected_error_location(linecol_), yaml(p           ), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p, std::string e, std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(std::move(p)), expected_emitted(std::move(e)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+    EngineEvtTestCase(const char *file_, int line_, ParserOptions opts_, TestCaseFlags_e tf, Location linecol_, std::string p               , std::string ev, std::vector<extra::IntEventWithScalar> ints) : file(file_), line(line_), opts(opts_), test_case_flags(tf), expected_error_location(linecol_), yaml(           p), expected_emitted(std::move(p)), expected_events(std::move(ev)), expected_ints(std::move(ints)), expected_ints_enabled(true) { _mkfileline(); }
+
+private:
+    void _mkfileline() { c4::formatrs(&fileline, "{}:{}: (testyaml)", file, line); }
 };
+
+
+//-----------------------------------------------------------------------------
+
+#define ENGINE_TEST_ERR(name, refyaml)                              ENGINE_TEST_ERRLOC__(name, ParserOptions{}, TestCaseFlags_e{}, Location{}, refyaml)
+#define ENGINE_TEST_ERR_(name, testcaseflags, refyaml)              ENGINE_TEST_ERRLOC__(name, ParserOptions{}, testcaseflags    , Location{}, refyaml)
+#define ENGINE_TEST_ERRLOC(name, location, refyaml)                 ENGINE_TEST_ERRLOC__(name, ParserOptions{}, TestCaseFlags_e{}, location  , refyaml)
+#define ENGINE_TEST_ERRLOC_(name, testcaseflags, location, refyaml) ENGINE_TEST_ERRLOC__(name, ParserOptions{}, testcaseflags    , location  , refyaml)
+#define ENGINE_TEST_ERROPT(name, parseoptions, refyaml)             ENGINE_TEST_ERRLOC__(name, parseoptions   , TestCaseFlags_e{}, Location{}, refyaml)
+#define ENGINE_TEST_ERROPT_(name, parseoptions, location, refyaml)  ENGINE_TEST_ERRLOC__(name, parseoptions   , TestCaseFlags_e{}, location  , refyaml)
+#define ENGINE_TEST_ERRLOC__(name, parseoptions, testcaseflags, location, refyaml) \
+                                                                        \
+                                                                        \
+static const EngineEvtTestCase test_case_err_##name(                    \
+    __FILE__, __LINE__,                                                 \
+    parseoptions,                                                       \
+    testcaseflags,                                                      \
+    location,                                                           \
+    refyaml,                                                            \
+    "");                                                                \
+                                                                        \
+                                                                        \
+TEST(name, err_testsuite_from_yaml)                                     \
+{                                                                       \
+    SCOPED_TRACE(#name ".err_testsuite_from_yaml");                     \
+    test_expected_error_testsuite_from_yaml(test_case_err_##name,       \
+                                            ExpectedErrorType::err_parse); \
+}                                                                       \
+                                                                        \
+                                                                        \
+TEST(name, err_ints_from_yaml)                                          \
+{                                                                       \
+    SCOPED_TRACE(#name ".err_ints_from_yaml");                          \
+    test_expected_error_ints_from_yaml(test_case_err_##name,            \
+                                       ExpectedErrorType::err_parse);   \
+}                                                                       \
+                                                                        \
+                                                                        \
+TEST(name, err_tree_from_yaml)                                          \
+{                                                                       \
+    SCOPED_TRACE(#name ".err_tree_from_yaml");                          \
+    test_expected_error_tree_from_yaml(test_case_err_##name,            \
+                                       ExpectedErrorType::err_parse);   \
+}
+
+
+//-----------------------------------------------------------------------------
+
+#define ENGINE_TEST_DECLARE_CASE(name, ...)                     \
+                                                                \
+                                                                \
+static const EngineEvtTestCase test_case_##name(                \
+    __FILE__, __LINE__,                                         \
+    __VA_ARGS__);                                               \
+                                                                \
+                                                                \
+/* declare a function producing the sequence of events */       \
+template<class EvtHandlerClass>                                 \
+void events_##name(EvtHandlerClass &handler);
+
+
+
+#define ENGINE_TEST_DEFINE_CASE(name)                                   \
+                                                                        \
+                                                                        \
+/* explicitly instantiate the event producers */                        \
+template void events_##name<extra::EventHandlerTestSuite>(extra::EventHandlerTestSuite&); \
+template void events_##name<EventHandlerIntsTr>(EventHandlerIntsTr&);   \
+template void events_##name<EventHandlerTree>(EventHandlerTree&);       \
+                                                                        \
+                                                                        \
+/* define the event producer template */                                \
+template<class EvtHandlerClass>                                         \
+void events_##name(EvtHandlerClass &ps)
+
+
+
+//-----------------------------------------------------------------------------
+
+
+
+/* declare a parse engine test for the existing event handlers.
+ * The extra arguments are for the ctor of EngineEvtTestCase */
+#define ENGINE_TEST(name, ...) ENGINE_TEST_(name, ParserOptions{}, __VA_ARGS__)
+
+
+/* declare a parse engine test for the existing event handlers.
+ * The extra arguments are for the ctor of EngineEvtTestCase */
+#define ENGINE_TEST_(name, ...)                                         \
+                                                                        \
+                                                                        \
+ENGINE_TEST_DECLARE_CASE(name, __VA_ARGS__)                             \
+                                                                        \
+                                                                        \
+TEST(name, testsuite_from_events)                                       \
+{                                                                       \
+    SCOPED_TRACE(#name ".testsuite_from_events");                       \
+    test_engine_testsuite_from_events(test_case_##name,                 \
+                                      &events_##name<extra::EventHandlerTestSuite>); \
+}                                                                       \
+                                                                        \
+TEST(name, ints_from_events)                                            \
+{                                                                       \
+    SCOPED_TRACE(#name ".ints_from_events");                            \
+    test_engine_ints_from_events(test_case_##name,                      \
+                                 &events_##name<EventHandlerIntsTr>);   \
+}                                                                       \
+                                                                        \
+TEST(name, tree_from_events)                                            \
+{                                                                       \
+    SCOPED_TRACE(#name ".tree_from_events");                            \
+    test_engine_tree_from_events(test_case_##name,                      \
+                                 &events_##name<EventHandlerTree>);     \
+}                                                                       \
+                                                                        \
+                                                                        \
+                                                                        \
+TEST(name, testsuite_from_yaml)                                         \
+{                                                                       \
+    SCOPED_TRACE(#name ".testsuite_from_yaml");                         \
+    test_engine_testsuite_from_yaml(test_case_##name);                  \
+}                                                                       \
+                                                                        \
+TEST(name, ints_from_yaml)                                              \
+{                                                                       \
+    SCOPED_TRACE(#name ".event_ints_from_yaml");                        \
+    test_engine_ints_from_yaml(test_case_##name);                       \
+}                                                                       \
+                                                                        \
+TEST(name, tree_from_yaml)                                              \
+{                                                                       \
+    SCOPED_TRACE(#name ".tree_from_yaml");                              \
+    test_engine_tree_from_yaml(test_case_##name);                       \
+}                                                                       \
+                                                                        \
+                                                                        \
+                                                                        \
+TEST(name, roundtrip_from_events)                                       \
+{                                                                       \
+    SCOPED_TRACE(#name ".roundtrip_from_events");                       \
+    test_engine_roundtrip_from_events(test_case_##name,                 \
+                                      &events_##name<EventHandlerTree>); \
+}                                                                       \
+                                                                        \
+TEST(name, roundtrip_from_yaml)                                         \
+{                                                                       \
+    SCOPED_TRACE(#name ".tree_from_yaml");                              \
+    test_engine_roundtrip_from_yaml(test_case_##name);                  \
+}                                                                       \
+                                                                        \
+                                                                        \
+                                                                        \
+TEST(name, testsuite_from_yaml_with_comments)                           \
+{                                                                       \
+    SCOPED_TRACE(#name ".testsuite_from_yaml_with_comments");           \
+    test_engine_testsuite_from_yaml_with_comments(test_case_##name);    \
+}                                                                       \
+                                                                        \
+TEST(name, ints_from_yaml_with_comments)                                \
+{                                                                       \
+    SCOPED_TRACE(#name ".ints_from_yaml_with_comments");                \
+    test_engine_ints_from_yaml_with_comments(test_case_##name);         \
+}                                                                       \
+                                                                        \
+TEST(name, tree_from_yaml_with_comments)                                \
+{                                                                       \
+    SCOPED_TRACE(#name ".tree_from_yaml");                              \
+    test_engine_tree_from_yaml_with_comments(test_case_##name);         \
+}                                                                       \
+                                                                        \
+TEST(name, roundtrip_from_yaml_with_comments)                           \
+{                                                                       \
+    SCOPED_TRACE(#name ".roundtrip_from_yaml");                         \
+    test_engine_roundtrip_from_yaml_with_comments(test_case_##name);    \
+}                                                                       \
+                                                                        \
+                                                                        \
+ENGINE_TEST_DEFINE_CASE(name)                                           \
+
 
 
 //-----------------------------------------------------------------------------
@@ -95,7 +280,7 @@ void test_engine_error_testsuite_from_events(const EngineEvtTestCase& tc, EventP
 void test_engine_testsuite_from_yaml(EngineEvtTestCase const& test_case, std::string const& parsed_yaml);
 inline void test_engine_testsuite_from_yaml(EngineEvtTestCase const& test_case) { test_engine_testsuite_from_yaml(test_case, test_case.yaml); }
 void test_engine_testsuite_from_yaml_with_comments(EngineEvtTestCase const& test_case);
-void test_expected_error_testsuite_from_yaml(ExpectedErrorType errtype, TestCaseFlags_e tcflags, std::string const& parsed_yaml, Location const& expected_error_location={});
+void test_expected_error_testsuite_from_yaml(EngineEvtTestCase const& test_case, ExpectedErrorType errtype);
 
 
 //-----------------------------------------------------------------------------
@@ -106,7 +291,7 @@ void test_engine_error_ints_from_events(const EngineEvtTestCase& test_case, Even
 void test_engine_ints_from_yaml(EngineEvtTestCase const& test_case, std::string const& parsed_yaml);
 inline void test_engine_ints_from_yaml(EngineEvtTestCase const& test_case) { test_engine_ints_from_yaml(test_case, test_case.yaml); }
 void test_engine_ints_from_yaml_with_comments(EngineEvtTestCase const& test_case);
-void test_expected_error_ints_from_yaml(ExpectedErrorType errtype, TestCaseFlags_e tcflags, std::string const& parsed_yaml, Location const& expected_error_location={});
+void test_expected_error_ints_from_yaml(EngineEvtTestCase const& test_case, ExpectedErrorType errtype);
 
 
 //-----------------------------------------------------------------------------
@@ -116,7 +301,7 @@ void test_engine_error_tree_from_events(const EngineEvtTestCase& test_case, Even
 void test_engine_tree_from_yaml(EngineEvtTestCase const& test_case, std::string const& parsed_yaml);
 inline void test_engine_tree_from_yaml(EngineEvtTestCase const& test_case) { test_engine_tree_from_yaml(test_case, test_case.yaml); }
 void test_engine_tree_from_yaml_with_comments(EngineEvtTestCase const& test_case);
-void test_expected_error_tree_from_yaml(ExpectedErrorType errtype, TestCaseFlags_e tcflags, std::string const& parsed_yaml, Location const& expected_error_location={});
+void test_expected_error_tree_from_yaml(EngineEvtTestCase const& test_case, ExpectedErrorType errtype);
 
 
 //-----------------------------------------------------------------------------
@@ -125,265 +310,6 @@ void test_engine_roundtrip_from_events(EngineEvtTestCase const& test_case, Event
 void test_engine_roundtrip_from_yaml(EngineEvtTestCase const& test_case, std::string const& parsed_yaml);
 inline void test_engine_roundtrip_from_yaml(EngineEvtTestCase const& test_case) { test_engine_roundtrip_from_yaml(test_case, test_case.yaml); }
 void test_engine_roundtrip_from_yaml_with_comments(EngineEvtTestCase const& test_case);
-
-
-//-----------------------------------------------------------------------------
-
-#ifdef RYML_DBG
-#define _RYML_SHOWFILELINE(name) printf("%s:%d: " #name "\n", __FILE__, __LINE__)
-#else
-#define _RYML_SHOWFILELINE(name)
-#endif
-
-
-//-----------------------------------------------------------------------------
-
-#define ENGINE_TEST_ERR(name, refyaml)                                  \
-    ENGINE_TEST_ERRLOC_(name, TestCaseFlags_e{}, ExpectedErrorType::err_parse, Location{}, refyaml)
-
-#define ENGINE_TEST_ERR_(name, testcaseflags, refyaml)                  \
-    ENGINE_TEST_ERRLOC_(name, testcaseflags, ExpectedErrorType::err_parse, Location{}, refyaml)
-
-#define ENGINE_TEST_ERRTY(name, errtype, refyaml)                       \
-    ENGINE_TEST_ERRLOC_(name, TestCaseFlags_e{}, errtype, Location{}, refyaml)
-
-#define ENGINE_TEST_ERRLOC(name, location, refyaml)                     \
-    ENGINE_TEST_ERRLOC_(name, TestCaseFlags_e{}, ExpectedErrorType::err_parse, location, refyaml)
-
-#define ENGINE_TEST_ERRLOC_(name, testcaseflags, errtype, location, refyaml) \
-                                                                        \
-                                                                        \
-TEST(name, err_testsuite_from_yaml)                                     \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_err_testsuite_from_yaml");                     \
-    test_expected_error_testsuite_from_yaml(errtype,                    \
-                                            testcaseflags,              \
-                                            refyaml,                    \
-                                            location);                  \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-TEST(name, err_ints_from_yaml)                                          \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_err_ints_from_yaml");                          \
-    test_expected_error_ints_from_yaml(errtype,                         \
-                                       testcaseflags,                   \
-                                       refyaml,                         \
-                                       location);                       \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-TEST(name, err_tree_from_yaml)                                          \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_err_tree_from_yaml");                          \
-    test_expected_error_tree_from_yaml(errtype,                         \
-                                       testcaseflags,                   \
-                                       refyaml,                         \
-                                       location);                       \
-    _RYML_SHOWFILELINE(name);                                           \
-}
-
-
-//-----------------------------------------------------------------------------
-
-#define ENGINE_TEST_DECLARE_CASE(name, ...)                     \
-                                                                \
-                                                                \
-static const EngineEvtTestCase test_case_##name(__VA_ARGS__);   \
-                                                                \
-                                                                \
-/* declare a function producing the sequence of events */       \
-template<class EvtHandlerClass>                                 \
-void events_##name(EvtHandlerClass &handler);
-
-
-#define _ENGINE_TEST_EVT_FN(name, ty) \
-template void events_##name<ty>(ty &)
-
-#define ENGINE_TEST_DEFINE_CASE(name)                       \
-                                                            \
-/* explicitly instantiate the event functor */              \
-_ENGINE_TEST_EVT_FN(name, extra::EventHandlerTestSuite);    \
-_ENGINE_TEST_EVT_FN(name, EventHandlerIntsTr);              \
-_ENGINE_TEST_EVT_FN(name, EventHandlerTree);                \
-                                                            \
-/* define the event functor */                              \
-template<class EvtHandlerClass>                             \
-void events_##name(EvtHandlerClass &ps)
-
-
-
-//-----------------------------------------------------------------------------
-
-
-#define ENGINE_TEST_ERR_FROM_EVENTS(name, ...)                          \
-                                                                        \
-                                                                        \
-ENGINE_TEST_DECLARE_CASE(name, __VA_ARGS__)                             \
-                                                                        \
-                                                                        \
-TEST(name, engine_err_testsuite_from_events)                            \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_err_testsuite_from_events");                   \
-    EventProducerTestSuite prod = &events_##name<extra::EventHandlerTestSuite>;                                                                    \
-    test_engine_error_testsuite_from_events(test_case_##name, prod);    \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-TEST(name, engine_err_ints_from_events)                                 \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_err_ints_from_events");                        \
-    EventProducerInts prod = &events_##name<EventHandlerIntsTr>;        \
-    test_engine_error_ints_from_events(test_case_##name, prod);         \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-TEST(name, engine_err_tree_from_events)                                 \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_err_tree_from_events");                        \
-    EventProducerTree prod = &events_##name<EventHandlerTree>;          \
-    test_engine_error_tree_from_events(test_case_##name);               \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-ENGINE_TEST_DEFINE_CASE(name)
-
-
-
-//-----------------------------------------------------------------------------
-
-
-/* declare a parse engine test for the existing event handlers.
- * The extra arguments are for the ctor of EngineEvtTestCase */
-#define ENGINE_TEST(name, ...) ENGINE_TEST_(name, ParserOptions{}, __VA_ARGS__)
-
-
-/* declare a parse engine test for the existing event handlers.
- * The extra arguments are for the ctor of EngineEvtTestCase */
-#define ENGINE_TEST_(name, ...)                                         \
-                                                                        \
-                                                                        \
-ENGINE_TEST_DECLARE_CASE(name, __VA_ARGS__)                             \
-                                                                        \
-                                                                        \
-TEST(name, testsuite_from_events)                                       \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_testsuite_from_events");                       \
-    EventProducerTestSuite prod = &events_##name<extra::EventHandlerTestSuite>; \
-    test_engine_testsuite_from_events(test_case_##name, prod);          \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, ints_from_events)                                            \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_ints_from_events");                            \
-    EventProducerInts prod = &events_##name<EventHandlerIntsTr>;        \
-    test_engine_ints_from_events(test_case_##name, prod);               \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, tree_from_events)                                            \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_tree_from_events");                            \
-    EventProducerTree prod = &events_##name<EventHandlerTree>;          \
-    test_engine_tree_from_events(test_case_##name, prod);               \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, roundtrip_from_events)                                       \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_roundtrip_from_events");                       \
-    EventProducerTree prod = &events_##name<EventHandlerTree>;          \
-    test_engine_roundtrip_from_events(test_case_##name, prod);          \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-                                                                        \
-TEST(name, testsuite_from_yaml)                                         \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_testsuite_from_yaml");                         \
-    test_engine_testsuite_from_yaml(test_case_##name);                  \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, ints_from_yaml)                                              \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_event_ints_from_yaml");                        \
-    test_engine_ints_from_yaml(test_case_##name);                       \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, tree_from_yaml)                                              \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_tree_from_yaml");                              \
-    test_engine_tree_from_yaml(test_case_##name);                       \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, roundtrip_from_yaml)                                         \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_tree_from_yaml");                              \
-    test_engine_roundtrip_from_yaml(test_case_##name);                  \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-                                                                        \
-TEST(name, testsuite_from_yaml_with_comments)                           \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_testsuite_from_yaml_with_comments");           \
-    test_engine_testsuite_from_yaml_with_comments(test_case_##name);    \
-}                                                                       \
-                                                                        \
-TEST(name, ints_from_yaml_with_comments)                                \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_ints_from_yaml_with_comments");                \
-    test_engine_ints_from_yaml_with_comments(test_case_##name);         \
-}                                                                       \
-                                                                        \
-TEST(name, tree_from_yaml_with_comments)                                \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_tree_from_yaml");                              \
-    test_engine_tree_from_yaml_with_comments(test_case_##name);         \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-TEST(name, roundtrip_from_yaml_with_comments)                           \
-{                                                                       \
-    _RYML_SHOWFILELINE(name);                                           \
-    SCOPED_TRACE(#name "_roundtrip_from_yaml");                         \
-    test_engine_roundtrip_from_yaml_with_comments(test_case_##name);    \
-    _RYML_SHOWFILELINE(name);                                           \
-}                                                                       \
-                                                                        \
-                                                                        \
-ENGINE_TEST_DEFINE_CASE(name)                                           \
-
-
-
 
 
 //-----------------------------------------------------------------------------
@@ -417,16 +343,20 @@ void _print_handler_info(EventTransformer<Handler, Transformer> const& ps, csubs
 
 //-----------------------------------------------------------------------------
 
+/** Helper to transform int event strings in bare event tests.
+ *
+ * The ints event handler needs to have the event strings either in
+ * the source or in the arena. That happens automatically when parsing
+ * from source. But the tests emitting bare events have no source, so
+ * we use this tranformer to ensure the event strings are placed in
+ * the arena. */
 template<class Handler, class ArgTransformer>
 struct EventTransformer
 {
     Handler handler;
     ArgTransformer transformer{&handler, {}};
 
-    void start_parse(const char* filename, c4::yml::detail::pfn_relocate_arena relocate_arena, void *relocate_arena_data)
-    {
-        handler.start_parse(filename, relocate_arena, relocate_arena_data);
-    }
+    void start_parse(const char* filename, substr ymlsrc) { handler.start_parse(filename, ymlsrc); }
 
     void begin_stream() { handler.begin_stream(); }
     void end_stream() { handler.end_stream(); }

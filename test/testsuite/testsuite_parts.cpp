@@ -32,8 +32,6 @@ const AllowedFailure allowed_failures[] = {
     _("S98Z-error"              , "error: block scalar with more spaces than first content line"),
     // block maps
     _("CXX2-error"              , "error: map with anchor after document start token"), // same for scalars/seqs
-    // directives
-    _("QLJ7-error"              , "%TAG should apply only to the next document"),
 
 
     //-------------------------------------------------------------------------

@@ -1522,6 +1522,139 @@ TEST(Tree, docref)
     EXPECT_EQ(tree.cdocref(3).val(), "doc3");
 }
 
+TEST(Tree, ancestor_doc)
+{
+    Tree tree = parse_in_arena(R"(---
+doc0:
+ - a
+ - b
+---
+doc1:
+  doc1:
+   - a
+   - b
+---
+doc2:
+  doc2:
+    doc2:
+     - a
+     - b
+---
+doc3:
+  doc3:
+    doc3:
+      doc3:
+        - a
+        - b
+)");
+    {
+        id_type doc0 = tree.doc(0);
+        id_type doc1 = tree.doc(1);
+        id_type doc2 = tree.doc(2);
+        id_type doc3 = tree.doc(3);
+        EXPECT_EQ(tree.ancestor_doc(tree.root_id()), tree.root_id());
+        EXPECT_EQ(tree.ancestor_doc(doc0), doc0);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(doc0)), doc0);
+        EXPECT_EQ(tree.ancestor_doc(doc1), doc1);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(doc1)), doc1);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(doc1))), doc1);
+        EXPECT_EQ(tree.ancestor_doc(doc2), doc2);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(doc2)), doc2);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(doc2))), doc2);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(tree.first_child(doc2)))), doc2);
+        EXPECT_EQ(tree.ancestor_doc(doc3), doc3);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(doc3)), doc3);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(doc3))), doc3);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(tree.first_child(doc3)))), doc3);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(tree.first_child(tree.first_child(doc3))))), doc3);
+    }
+    {
+        Tree const& ctree = tree;
+        ConstNodeRef doc0 = ctree.docref(0);
+        ConstNodeRef doc1 = ctree.docref(1);
+        ConstNodeRef doc2 = ctree.docref(2);
+        ConstNodeRef doc3 = ctree.docref(3);
+        EXPECT_EQ(ctree.rootref().ancestor_doc().id(), tree.root_id());
+        EXPECT_EQ(doc0.ancestor_doc().id(), doc0.id());
+        EXPECT_EQ(doc0[0].ancestor_doc().id(), doc0.id());
+        EXPECT_EQ(doc1.ancestor_doc().id(), doc1.id());
+        EXPECT_EQ(doc1[0].ancestor_doc().id(), doc1.id());
+        EXPECT_EQ(doc1[0][0].ancestor_doc().id(), doc1.id());
+        EXPECT_EQ(doc2.ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc2[0].ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc2[0][0].ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc2[0][0][0].ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc3.ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0].ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0][0].ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0][0][0].ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0][0][0][0].ancestor_doc().id(), doc3.id());
+    }
+    {
+        NodeRef doc0 = tree.docref(0);
+        NodeRef doc1 = tree.docref(1);
+        NodeRef doc2 = tree.docref(2);
+        NodeRef doc3 = tree.docref(3);
+        EXPECT_EQ(doc0.ancestor_doc().id(), doc0.id());
+        EXPECT_EQ(doc0[0].ancestor_doc().id(), doc0.id());
+        EXPECT_EQ(doc1.ancestor_doc().id(), doc1.id());
+        EXPECT_EQ(doc1[0].ancestor_doc().id(), doc1.id());
+        EXPECT_EQ(doc1[0][0].ancestor_doc().id(), doc1.id());
+        EXPECT_EQ(doc2.ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc2[0].ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc2[0][0].ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc2[0][0][0].ancestor_doc().id(), doc2.id());
+        EXPECT_EQ(doc3.ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0].ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0][0].ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0][0][0].ancestor_doc().id(), doc3.id());
+        EXPECT_EQ(doc3[0][0][0][0].ancestor_doc().id(), doc3.id());
+    }
+}
+TEST(Tree, ancestor_doc_without_doc)
+{
+    Tree tree = parse_in_arena(R"(
+doc3:
+  doc3:
+    doc3:
+      doc3:
+        - a
+        - b
+)");
+    {
+        id_type root = tree.root_id();
+        ASSERT_TRUE(tree.is_map(root));
+        id_type doc3 = tree.first_child(root);
+        EXPECT_EQ(tree.ancestor_doc(root), root);
+        EXPECT_EQ(tree.ancestor_doc(doc3), root);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(doc3)), root);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(doc3))), root);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(tree.first_child(doc3)))), root);
+        EXPECT_EQ(tree.ancestor_doc(tree.first_child(tree.first_child(tree.first_child(tree.first_child(doc3))))), root);
+    }
+    {
+        Tree const& ctree = tree;
+        ConstNodeRef root = ctree.rootref();
+        ConstNodeRef doc3 = root[0];
+        EXPECT_EQ(root.ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3.ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0].ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0][0].ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0][0][0].ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0][0][0][0].ancestor_doc().id(), root.id());
+    }
+    {
+        NodeRef root = tree.rootref();
+        NodeRef doc3 = root[0];
+        EXPECT_EQ(root.ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3.ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0].ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0][0].ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0][0][0].ancestor_doc().id(), root.id());
+        EXPECT_EQ(doc3[0][0][0][0].ancestor_doc().id(), root.id());
+    }
+}
+
 TEST(NodeType, is_container)
 {
     EXPECT_FALSE(NodeType(NOTYPE).is_container());
@@ -4533,51 +4666,25 @@ TEST(Tree, add_tag_directives)
             EXPECT_EQ(d.handle.len, td[pos].handle.len);
             EXPECT_EQ(d.prefix.str, td[pos].prefix.str);
             EXPECT_EQ(d.prefix.str, td[pos].prefix.str);
-            EXPECT_EQ(d.next_node_id, td[pos].next_node_id);
+            EXPECT_EQ(d.doc_id, td[pos].doc_id);
             ++pos;
         }
         EXPECT_EQ(pos, num);
     };
     check_up_to(0);
-    t.add_tag_directive(td[0]);
+    t.add_tag_directive(td[0].handle, td[0].prefix, 0u);
     check_up_to(1);
-    t.add_tag_directive(td[1]);
+    t.add_tag_directive(td[1].handle, td[1].prefix, 0u);
     check_up_to(2);
-    t.add_tag_directive(td[2]);
+    t.add_tag_directive(td[2].handle, td[2].prefix, 0u);
     check_up_to(3);
-    t.add_tag_directive(td[3]);
+    t.add_tag_directive(td[3].handle, td[3].prefix, 0u);
     check_up_to(4);
     ExpectError::check_error_basic(&t, [&]{ // number exceeded
-        t.add_tag_directive(td[4]);
+        t.add_tag_directive(td[4].handle, td[4].prefix, 0u);
     });
     t.clear_tag_directives();
     check_up_to(0);
-}
-
-TEST(Tree, resolve_tag)
-{
-    csubstr yaml = R"(
-#%TAG !m! !my-
---- # Bulb here
-!m!light fluorescent
-...
-#%TAG !m! !meta-
---- # Color here
-!m!light green
-)";
-    // we're not testing the parser here, just the tag mechanics.
-    // So we'll add the tag directives by hand.
-    Tree t = parse_in_arena(yaml);
-    ASSERT_EQ(t.rootref().num_children(), 2);
-    EXPECT_EQ(t[0].val_tag(), "!m!light");
-    EXPECT_EQ(t[1].val_tag(), "!m!light");
-    EXPECT_EQ(t.num_tag_directives(), 0u);
-    t.add_tag_directive(TagDirective{csubstr("!m!"), csubstr("!my-"), 1});
-    t.add_tag_directive(TagDirective{csubstr("!m!"), csubstr("!meta-"), 2});
-    EXPECT_EQ(t.num_tag_directives(), 2u);
-    char buf_[100];
-    EXPECT_EQ(t.resolve_tag_sub(buf_, "!m!light", 1u), csubstr("<!my-light>"));
-    EXPECT_EQ(t.resolve_tag_sub(buf_, "!m!light", 2u), csubstr("<!meta-light>"));
 }
 
 

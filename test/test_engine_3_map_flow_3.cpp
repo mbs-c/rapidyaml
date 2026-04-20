@@ -521,7 +521,7 @@ ENGINE_TEST_ERRLOC(MapValNestedIndentComma0_0tab, Location(10, 1),
 
 const TestCaseFlags_e keyflags = (TestCaseFlags_e)(HAS_CONTAINER_KEYS|EXPECT_PARSE_ERROR);
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0, keyflags,
                     Location(6, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -532,7 +532,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0, keyflags, ExpectedErrorType::err_p
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0tab, keyflags,
                     Location(6, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -543,7 +543,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_0tab, keyflags, ExpectedErrorType::er
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_1, keyflags,
                     Location(7, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -555,7 +555,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_1, keyflags, ExpectedErrorType::err_p
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_1tab, keyflags,
                     Location(7, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -567,7 +567,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_1tab, keyflags, ExpectedErrorType::er
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_0, keyflags,
                     Location(8, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -580,7 +580,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_0, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_0tab, keyflags,
                     Location(8, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -593,7 +593,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_0tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_1, keyflags,
                     Location(9, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -607,7 +607,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_1, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_1tab, keyflags,
                     Location(9, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -621,7 +621,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_1tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_2, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_2, keyflags,
                     Location(10, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -636,7 +636,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_2, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_2tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_2tab, keyflags,
                     Location(10, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -651,7 +651,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_2_2tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_0, keyflags,
                     Location(8, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -664,7 +664,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_0, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_0tab, keyflags,
                     Location(8, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -677,7 +677,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_0tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_1, keyflags,
                     Location(9, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -691,7 +691,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_1, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_1tab, keyflags,
                     Location(9, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -705,7 +705,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_1tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_2, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_2, keyflags,
                     Location(10, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -721,7 +721,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_2, keyflags, ExpectedErrorType::err
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_2tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_2tab, keyflags,
                     Location(10, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -737,7 +737,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentKey0_3_2tab, keyflags, ExpectedErrorType::
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_0, keyflags,
                     Location(10, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -752,7 +752,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_0, keyflags, ExpectedErrorType::err_p
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_0tab, keyflags,
                     Location(10, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -767,7 +767,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_0tab, keyflags, ExpectedErrorType::er
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_1, keyflags,
                     Location(11, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -783,7 +783,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_1, keyflags, ExpectedErrorType::err_p
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_1tab, keyflags,
                     Location(11, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -799,7 +799,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_1tab, keyflags, ExpectedErrorType::er
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_0, keyflags,
                     Location(12, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -816,7 +816,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_0, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_0tab, keyflags,
                     Location(12, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -833,7 +833,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_0tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_1, keyflags,
                     Location(13, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -851,7 +851,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_1, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_1tab, keyflags,
                     Location(13, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -869,7 +869,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_1tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_2, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_2, keyflags,
                     Location(14, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -888,7 +888,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_2, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_2tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_2tab, keyflags,
                     Location(14, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -907,7 +907,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_2_2tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_0, keyflags,
                     Location(12, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -924,7 +924,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_0, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_0tab, keyflags,
                     Location(12, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -941,7 +941,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_0tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_1, keyflags,
                     Location(13, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -959,7 +959,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_1, keyflags, ExpectedErrorType::err
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_1tab, keyflags,
                     Location(13, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -977,7 +977,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_1tab, keyflags, ExpectedErrorType::
                     " }"     "\n"
                     ": v"     "\n"
 )
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_2, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_2, keyflags,
                     Location(14, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -997,7 +997,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_2, keyflags, ExpectedErrorType::err
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_2tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_2tab, keyflags,
                     Location(14, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1017,7 +1017,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentVal0_3_2tab, keyflags, ExpectedErrorType::
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentColon0_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentColon0_0, keyflags,
                     Location(9, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1033,7 +1033,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentColon0_0, keyflags, ExpectedErrorType::err
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentColon0_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentColon0_0tab, keyflags,
                     Location(9, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1049,7 +1049,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentColon0_0tab, keyflags, ExpectedErrorType::
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_0, keyflags,
                     Location(11, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1065,7 +1065,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_0, keyflags, ExpectedErrorType::e
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_0tab, keyflags,
                     Location(11, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1081,7 +1081,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_0tab, keyflags, ExpectedErrorType
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_1, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_1, keyflags,
                     Location(12, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1098,7 +1098,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_1, keyflags, ExpectedErrorType::e
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_1tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_1tab, keyflags,
                     Location(12, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1115,7 +1115,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentBracket0_1tab, keyflags, ExpectedErrorType
                     ": v"     "\n"
 )
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentComma0_0, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentComma0_0, keyflags,
                     Location(11, 1),
                     "? {"    "\n"
                     " a"     "\n"
@@ -1136,7 +1136,7 @@ ENGINE_TEST_ERRLOC_(MapKeyNestedIndentComma0_0, keyflags, ExpectedErrorType::err
 
 //-----------------------------------------------------------------------------
 
-ENGINE_TEST_ERRLOC_(MapKeyNestedIndentComma0_0tab, keyflags, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(MapKeyNestedIndentComma0_0tab, keyflags,
                     Location(11, 1),
                     "? {"    "\n"
                     " a"     "\n"

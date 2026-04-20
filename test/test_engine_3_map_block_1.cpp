@@ -693,38 +693,38 @@ ENGINE_TEST_ERRLOC(colon_on_newl_after_second_dquo_0_3,
 
 //-----------------------------------------------------------------------------
 
-ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_seq_0_0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_seq_0_0, HAS_CONTAINER_KEYS,
                     Location(3, 6),
                     "? [seq]\n"
                     ": bar\n"
                     "[bad]\n"
                     ": yes")
-ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_seq_0_1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_seq_0_1, HAS_CONTAINER_KEYS,
                     Location(3, 6),
                     "? [seq]\n"
                     ": bar\n"
                     "[bad]\n"
                     " : yes")
-ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_seq_0_2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_seq_0_2, HAS_CONTAINER_KEYS,
                     Location(3, 6),
                     "? [seq]\n"
                     ": bar\n"
                     "[bad]\n"
                     "  : yes")
 
-ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_map_0_0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_map_0_0, HAS_CONTAINER_KEYS,
                     Location(3, 11),
                     "? {foo: bar}\n"
                     ": bar\n"
                     "{foo: bar}\n"
                     ": yes")
-ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_map_0_1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_map_0_1, HAS_CONTAINER_KEYS,
                     Location(3, 11),
                     "? {foo: bar}\n"
                     ": bar\n"
                     "{foo: bar}\n"
                     " : yes")
-ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_map_0_2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(colon_on_newl_after_second_map_0_2, HAS_CONTAINER_KEYS,
                     Location(3, 11),
                     "? {foo: bar}\n"
                     ": bar\n"

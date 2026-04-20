@@ -154,13 +154,13 @@ void EventsEmitter::emit_scalar(csubstr val, char openchar)
 
 void EventsEmitter::emit_tag(csubstr tag, id_type node)
 {
-    size_t tagsize = m_tree->resolve_tag(to_substr(tagbuf), tag, node);
+    size_t tagsize = m_tree->resolve_tag(to_substr(tagbuf), tag, m_tree->ancestor_doc(node));
     if(tagsize)
     {
         if(tagsize > tagbuf.size())
         {
             tagbuf.resize(tagsize);
-            tagsize = m_tree->resolve_tag(to_substr(tagbuf), tag, node);
+            tagsize = m_tree->resolve_tag(to_substr(tagbuf), tag, m_tree->ancestor_doc(node));
         }
         pr(to_substr(tagbuf).first(tagsize));
     }

@@ -53,17 +53,17 @@ ENGINE_TEST_ERRLOC(NonFirstDashErr0, Location(1, 6),
                    "     - b\n"
                    )
 
-ENGINE_TEST_ERRLOC_(NonFirstDashErr1_1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(NonFirstDashErr1_1, HAS_CONTAINER_KEYS,
                     Location(2, 1),
                     "  - b\n"
                     "? - a\n"
                     )
-ENGINE_TEST_ERRLOC_(NonFirstDashErr1_2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(NonFirstDashErr1_2, HAS_CONTAINER_KEYS,
                     Location(2, 3),
                     "  - b\n"
                     "  ? - a\n"
                     )
-ENGINE_TEST_ERRLOC_(NonFirstDashErr1_3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(NonFirstDashErr1_3, HAS_CONTAINER_KEYS,
                     Location(2, 3),
                     "  - b\n"
                     "  ?- a\n"

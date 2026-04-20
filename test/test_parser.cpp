@@ -550,11 +550,19 @@ TEST(Parser, filename_and_buffer_are_stored)
     csubstr csrc = src_;
     Parser::handler_type evt_handler = {};
     Parser parser(&evt_handler);
-    EXPECT_EQ(parser.filename(), csubstr{});
+    EXPECT_NE(parser.m_evt_handler, nullptr);
+    EXPECT_EQ(parser.m_evt_handler->m_curr, nullptr);
+    EXPECT_EQ(parser.filename().str, nullptr);
+    EXPECT_EQ(parser.filename().len, 0);
+    EXPECT_EQ(parser.source().str, nullptr);
+    EXPECT_EQ(parser.source().len, 0);
     {
         Tree tree = parse_in_place(&parser, "file0", src);
         EXPECT_EQ(parser.filename(), "file0");
-        EXPECT_TRUE(is_same(parser.source(), src));
+        EXPECT_NE(parser.m_evt_handler, nullptr);
+        EXPECT_NE(parser.m_evt_handler->m_curr, nullptr);
+        EXPECT_EQ(parser.source().str, src.str);
+        EXPECT_EQ(parser.source().len, src.len);
     }
     {
         Tree tree = parse_in_arena(&parser, "file1", csrc);
@@ -596,17 +604,18 @@ TEST(Parser, alloc_arena)
 {
     Tree tree;
     Parser::handler_type evt_handler = {};
+    Parser parser(&evt_handler);
     int data = 0;
     auto relocate = [](void*, csubstr prev, substr next_arena){
         EXPECT_FALSE(prev.overlaps(next_arena));
     };
     evt_handler.reset(&tree, tree.root_id());
-    evt_handler.start_parse("filename", "", relocate, &data);
+    evt_handler.start_parse("filename", substr{});
     substr bufa = evt_handler.alloc_arena(64);
     bufa.fill('a');
     csubstr prev = bufa;
     csubstr prev_arena = tree.arena();
-    substr bufb = evt_handler.alloc_arena(64, &bufa);
+    substr bufb = parser._alloc_arena(64, &bufa);
     csubstr curr_arena = tree.arena();
     EXPECT_NE(prev_arena.str, curr_arena.str);
     EXPECT_NE(prev.str, bufa.str);
@@ -2284,7 +2293,7 @@ TEST_F(ParseToMapFlowTest, map_flow_tag__to__map_flow__root)
 {
     NodeRef dst = dst_map_flow.rootref();
     parse_in_arena(to_csubstr(map_flow_tag), dst);
-    const Tree expected = parse_in_arena("!!tag\nmap: flow\nyes: it is\n");
+    const Tree expected = parse_in_arena("!!map\nmap: flow\nyes: it is\n");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_flow);
     test_compare(dst_map_flow, expected);
@@ -2294,7 +2303,7 @@ TEST_F(ParseToMapFlowTest, map_flow_tag__to__map_flow__new_child)
 {
     NodeRef dst = dst_map_flow.rootref().append_child({KEY, "dst"});
     parse_in_arena(to_csubstr(map_flow_tag), dst);
-    const Tree expected = parse_in_arena("dst: !!tag\n  map: flow\n  yes: it is\n");
+    const Tree expected = parse_in_arena("dst: !!map\n  map: flow\n  yes: it is\n");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_flow);
     test_compare(dst_map_flow, expected);
@@ -2452,7 +2461,7 @@ TEST_F(ParseToMapFlowTest, map_block_tag__to__map_flow__root)
 {
     NodeRef dst = dst_map_flow.rootref();
     parse_in_arena(to_csubstr(map_blck_tag), dst);
-    const Tree expected = parse_in_arena("!!tag {map: block, yes: it is}");
+    const Tree expected = parse_in_arena("!!map {map: block, yes: it is}");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_flow);
     test_compare(dst_map_flow, expected);
@@ -2462,7 +2471,7 @@ TEST_F(ParseToMapFlowTest, map_block_tag__to__map_flow__new_child)
 {
     NodeRef dst = dst_map_flow.rootref().append_child({KEY, "dst"});
     parse_in_arena(to_csubstr(map_blck_tag), dst);
-    const Tree expected = parse_in_arena("dst: !!tag {map: block, yes: it is}");
+    const Tree expected = parse_in_arena("dst: !!map {map: block, yes: it is}");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_flow);
     test_compare(dst_map_flow, expected);
@@ -2946,7 +2955,7 @@ TEST_F(ParseToMapBlockTest, map_flow_tag__to__map_flow__root)
 {
     NodeRef dst = dst_map_blck.rootref();
     parse_in_arena(to_csubstr(map_flow_tag), dst);
-    const Tree expected = parse_in_arena("!!tag\nmap: flow\nyes: it is\n");
+    const Tree expected = parse_in_arena("!!map\nmap: flow\nyes: it is\n");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_blck);
     test_compare(dst_map_blck, expected);
@@ -2956,7 +2965,7 @@ TEST_F(ParseToMapBlockTest, map_flow_tag__to__map_flow__new_child)
 {
     NodeRef dst = dst_map_blck.rootref().append_child({KEY, "dst"});
     parse_in_arena(to_csubstr(map_flow_tag), dst);
-    const Tree expected = parse_in_arena("dst: !!tag\n  map: flow\n  yes: it is\n");
+    const Tree expected = parse_in_arena("dst: !!map\n  map: flow\n  yes: it is\n");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_blck);
     test_compare(dst_map_blck, expected);
@@ -3114,7 +3123,7 @@ TEST_F(ParseToMapBlockTest, map_block_tag__to__map_flow__root)
 {
     NodeRef dst = dst_map_blck.rootref();
     parse_in_arena(to_csubstr(map_blck_tag), dst);
-    const Tree expected = parse_in_arena("!!tag {map: block, yes: it is}");
+    const Tree expected = parse_in_arena("!!map {map: block, yes: it is}");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_blck);
     test_compare(dst_map_blck, expected);
@@ -3124,7 +3133,7 @@ TEST_F(ParseToMapBlockTest, map_block_tag__to__map_flow__new_child)
 {
     NodeRef dst = dst_map_blck.rootref().append_child({KEY, "dst"});
     parse_in_arena(to_csubstr(map_blck_tag), dst);
-    const Tree expected = parse_in_arena("dst: !!tag {map: block, yes: it is}");
+    const Tree expected = parse_in_arena("dst: !!map {map: block, yes: it is}");
     _c4dbg_tree("expected", expected);
     _c4dbg_tree("actual", dst_map_blck);
     test_compare(dst_map_blck, expected);
