@@ -557,6 +557,10 @@ TEST(number, github_312_535)
 }
 )";
     enum : int { is_yaml, is_json };
+    C4_SUPPRESS_WARNING_GCC_PUSH
+    #if defined(__GNUC__) && (__GNUC__ >= 7)
+    C4_SUPPRESS_WARNING_GCC("-Wduplicated-branches")
+    #endif
     auto checktree_ = [](Tree const& t, int type){
         // inf
         ConstNodeRef inf = type == is_yaml ? t["inf"] : t[".inf"];
@@ -592,6 +596,7 @@ TEST(number, github_312_535)
         EXPECT_EQ(t["normal"][1].val(), "0.2e3");
         EXPECT_EQ(t["normal"][2].val(), "4.e5");
     };
+    C4_SUPPRESS_WARNING_GCC_POP
     #define checktree(...) do { SCOPED_TRACE("here"); checktree_(__VA_ARGS__); } while(0)
     checktree(tree, is_yaml);
     std::string yaml = emitrs_yaml<std::string>(tree);
