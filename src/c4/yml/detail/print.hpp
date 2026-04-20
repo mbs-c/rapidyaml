@@ -12,6 +12,8 @@
 #define _c4dbg_node(...)
 #endif
 
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
+
 namespace c4 {
 namespace yml {
 
@@ -198,5 +200,6 @@ C4_SUPPRESS_WARNING_GCC_CLANG_POP
 } /* namespace yml */
 } /* namespace c4 */
 
+// NOLINTEND(modernize-avoid-c-style-cast)
 
 #endif /* C4_YML_DETAIL_PRINT_HPP_ */

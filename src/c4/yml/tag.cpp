@@ -70,7 +70,9 @@ YamlTag_e to_tag(csubstr tag)
     if(tag.begins_with("!<"))
         tag = tag.sub(1);
     if(tag.begins_with("!!"))
+    {
         tag = tag.sub(2);
+    }
     else if(tag.begins_with('!'))
     {
         return TAG_NONE;

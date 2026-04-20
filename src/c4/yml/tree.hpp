@@ -40,6 +40,7 @@ C4_SUPPRESS_WARNING_GCC_CLANG("-Wold-style-cast")
 C4_SUPPRESS_WARNING_GCC("-Wuseless-cast")
 C4_SUPPRESS_WARNING_GCC("-Wtype-limits")
 
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
 
 namespace c4 {
 namespace yml {
@@ -708,7 +709,7 @@ public:
 
 public:
 
-    #if defined(__clang__)
+    #if defined(__clang__) // NOLINT
     #   pragma clang diagnostic push
     #   pragma clang diagnostic ignored "-Wnull-dereference"
     #elif defined(__GNUC__)
@@ -1371,14 +1372,14 @@ inline auto read(Tree const* C4_RESTRICT tree, id_type id, T *v)
     -> typename std::enable_if<std::is_arithmetic<T>::value && !std::is_floating_point<T>::value, bool>::type
 {
     using U = typename std::remove_cv<T>::type;
-    enum { ischar = std::is_same<char, U>::value || std::is_same<signed char, U>::value || std::is_same<unsigned char, U>::value };
+    enum { ischar = std::is_same<char, U>::value || std::is_same<signed char, U>::value || std::is_same<unsigned char, U>::value }; // NOLINT
     csubstr val = tree->val(id);
     NodeType ty = tree->type(id);
     if(C4_UNLIKELY((ty & VALNIL) || val.empty()))
         return false;
     // quote integral numbers if they have a leading 0
     // https://github.com/biojppm/rapidyaml/issues/291
-    char first = val[0];
+    char first = val.str[0];
     if(ty.is_val_quoted() && (first != '0' && !ischar))
         return false;
     else if(first == '+')
@@ -1396,14 +1397,14 @@ inline auto readkey(Tree const* C4_RESTRICT tree, id_type id, T *v)
     -> typename std::enable_if<std::is_arithmetic<T>::value && !std::is_floating_point<T>::value, bool>::type
 {
     using U = typename std::remove_cv<T>::type;
-    enum { ischar = std::is_same<char, U>::value || std::is_same<signed char, U>::value || std::is_same<unsigned char, U>::value };
+    enum { ischar = std::is_same<char, U>::value || std::is_same<signed char, U>::value || std::is_same<unsigned char, U>::value }; // NOLINT
     csubstr key = tree->key(id);
     NodeType ty = tree->type(id);
     if((ty & KEYNIL) || key.empty())
         return false;
     // quote integral numbers if they have a leading 0
     // https://github.com/biojppm/rapidyaml/issues/291
-    char first = key[0];
+    char first = key.str[0];
     if(ty.is_key_quoted() && (first != '0' && !ischar))
         return false;
     else if(first == '+')
@@ -1554,6 +1555,7 @@ csubstr serialize_to_arena(Tree * C4_RESTRICT tree, T const& C4_RESTRICT a)
 } // namespace yml
 } // namespace c4
 
+// NOLINTEND(modernize-avoid-c-style-cast)
 
 C4_SUPPRESS_WARNING_MSVC_POP
 C4_SUPPRESS_WARNING_GCC_CLANG_POP

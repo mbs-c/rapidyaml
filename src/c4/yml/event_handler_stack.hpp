@@ -50,8 +50,8 @@ public:
 
 protected:
 
-    EventHandlerStack() : m_stack(), m_curr(), m_parent(), m_src() {}
-    EventHandlerStack(Callbacks const& cb) : m_stack(cb), m_curr(), m_parent(), m_src() {}
+    EventHandlerStack() : m_stack(), m_curr(), m_parent(), m_src() {} // NOLINT
+    EventHandlerStack(Callbacks const& cb) : m_stack(cb), m_curr(), m_parent(), m_src() {} // NOLINT
 
 protected:
 

@@ -18,6 +18,7 @@ namespace c4 {
 namespace yml {
 
 C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wold-style-cast")
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
 
 namespace detail {
 
@@ -33,7 +34,7 @@ class stack
 
 public:
 
-    enum : id_type { sso_size = N };
+    enum : id_type { sso_size = N }; // NOLINT
 
 public:
 
@@ -286,6 +287,7 @@ void stack<T, N>::_cb(Callbacks const& cb)
 
 } // namespace detail
 
+// NOLINTEND(modernize-avoid-c-style-cast)
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 } // namespace yml

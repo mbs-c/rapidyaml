@@ -246,20 +246,20 @@ static_assert(std::is_integral<id_type>::value, "id_type must be an integer type
 
 
 C4_SUPPRESS_WARNING_GCC_WITH_PUSH("-Wuseless-cast")
-enum : id_type {
+enum : id_type { // NOLINT
     /** an index to none */
-    NONE = id_type(-1),
+    NONE = id_type(-1), // NOLINT
 };
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 
-enum : size_t {
+enum : size_t { // NOLINT
     /** a null string position */
-    npos = size_t(-1)
+    npos = size_t(-1) // NOLINT
 };
 
 
-typedef enum Encoding_ {
+typedef enum Encoding_ { // NOLINT
     NOBOM,         //!< No Byte Order Mark was found
     UTF8,          //!< UTF8
     UTF16LE,       //!< UTF16, Little-Endian
@@ -347,7 +347,7 @@ struct RYML_EXPORT ParserOptions
 {
 private:
 
-    typedef enum : uint32_t {
+    typedef enum : uint32_t { // NOLINT
         DETECT_FLOW_ML = (1u << 0u),
         RESOLVE_TAGS = (1u << 1u),
         RESOLVE_TAGS_ALL = (1u << 2u),

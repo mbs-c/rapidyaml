@@ -23,6 +23,8 @@
 #   pragma warning(disable: 4296/*expression is always 'boolean_value'*/)
 #endif
 
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
+
 namespace c4 {
 namespace yml {
 
@@ -170,7 +172,7 @@ struct RoNodeMethods;
 /** a CRTP base providing read-only methods for @ref ConstNodeRef and @ref NodeRef */
 namespace detail {
 template<class Impl, class ConstImpl>
-struct RoNodeMethods
+struct RoNodeMethods // NOLINT
 {
     C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wcast-align")
     /** @cond dev */
@@ -730,7 +732,7 @@ public:
 
 public:
 
-    #if defined(__clang__)
+    #if defined(__clang__) // NOLINT
     #   pragma clang diagnostic push
     #   pragma clang diagnostic ignored "-Wnull-dereference"
     #elif defined(__GNUC__)
@@ -1664,7 +1666,7 @@ C4_ALWAYS_INLINE bool readkey(NodeRef const& C4_RESTRICT n, T *v)
 } // namespace yml
 } // namespace c4
 
-
+// NOLINTEND(modernize-avoid-c-style-cast)
 
 #ifdef __clang__
 #   pragma clang diagnostic pop

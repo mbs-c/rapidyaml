@@ -78,7 +78,7 @@
 #   endif
 #endif
 
-// NOLINTBEGIN(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered)
+// NOLINTBEGIN(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered,modernize-avoid-c-style-cast)
 
 namespace c4 {
 namespace yml {
@@ -256,7 +256,9 @@ inline size_t _count_following_newlines(csubstr r, size_t *C4_RESTRICT i, size_t
             }
             // skip leading whitespace
             else if(c != ' ' && c != '\t' && c != '\r')
+            {
                 break;
+            }
         }
     }
     return numnl_following;
@@ -4126,14 +4128,15 @@ void ParseEngine<EventHandler>::_prepare_locations()
     m_newline_offsets_size = 0;
     for(size_t i = 0; i < src.len; i++)
         if(src.str[i] == '\n')
-            m_newline_offsets[m_newline_offsets_size++] = i;
-    m_newline_offsets[m_newline_offsets_size++] = src.len;
+            m_newline_offsets[m_newline_offsets_size++] = i; // NOLINT
+    m_newline_offsets[m_newline_offsets_size++] = src.len; // NOLINT
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_newline_offsets_size == numnewlines);
 }
 
 template<class EventHandler>
 void ParseEngine<EventHandler>::_resize_locations(size_t numnewlines)
 {
+    numnewlines = numnewlines >= 16 ? numnewlines : 16;
     if(numnewlines > m_newline_offsets_capacity)
     {
         if(m_newline_offsets)
@@ -8628,7 +8631,7 @@ void ParseEngine<EventHandler>::parse_in_place_ev(csubstr filename, substr src)
 } // namespace yml
 } // namespace c4
 
-// NOLINTEND(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered)
+// NOLINTEND(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered,modernize-avoid-c-style-cast)
 
 #undef _c4dbgnextline
 #undef _c4assert

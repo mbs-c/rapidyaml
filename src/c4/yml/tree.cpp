@@ -9,6 +9,7 @@ C4_SUPPRESS_WARNING_MSVC(4702/*unreachable code*/)
 C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wold-style-cast")
 C4_SUPPRESS_WARNING_GCC("-Wtype-limits")
 C4_SUPPRESS_WARNING_GCC("-Wuseless-cast")
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
 
 
 namespace c4 {
@@ -1743,7 +1744,9 @@ id_type Tree::_next_node_modify(lookup_result * r, _lookup_path_token *parent)
         else
         {
             if(is_map(r->closest))
+            {
                 node = find_child(r->closest, token.value);
+            }
             else
             {
                 id_type pos = NONE;
@@ -1999,5 +2002,6 @@ bool Tree::_location_from_cont(Parser const& parser, id_type node, Location *C4_
 } // namespace c4
 
 
+// NOLINTEND(modernize-avoid-c-style-cast)
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 C4_SUPPRESS_WARNING_MSVC_POP

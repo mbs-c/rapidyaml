@@ -210,7 +210,7 @@ struct FilterResult;
 struct FilterResultExtending;
 
 /** @cond dev */
-typedef enum BlockChomp_ {
+typedef enum BlockChomp_ { // NOLINT
     CHOMP_CLIP,    //!< single newline at end (default)
     CHOMP_STRIP,   //!< no newline at end     (-)
     CHOMP_KEEP     //!< all newlines from end (+)

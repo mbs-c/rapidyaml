@@ -11,6 +11,7 @@
 #endif
 
 C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wold-style-cast")
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
 
 namespace c4 {
 namespace yml {
@@ -1555,6 +1556,7 @@ void Emitter<Writer>::_json_write_number(csubstr s)
 } // namespace yml
 } // namespace c4
 
+// NOLINTEND(modernize-avoid-c-style-cast)
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 #endif /* _C4_YML_EMIT_DEF_HPP_ */

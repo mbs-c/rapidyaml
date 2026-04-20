@@ -182,3 +182,4 @@ Ensure parse errors for **invalid** YAML cases, and improve reported error locat
     {multiline:
         map}: invalid
    ```
+

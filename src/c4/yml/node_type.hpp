@@ -11,6 +11,7 @@ C4_SUPPRESS_WARNING_GCC_CLANG("-Wold-style-cast")
 #if __GNUC__ >= 6
 C4_SUPPRESS_WARNING_GCC("-Wnull-dereference")
 #endif
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
 
 namespace c4 {
 namespace yml {
@@ -30,7 +31,7 @@ using type_bits = uint32_t;
 
 
 /** a bit mask for marking node types and styles */
-typedef enum : type_bits {
+typedef enum : type_bits { // NOLINT
     #define __(v) (type_bits(1) << v) // a convenience define, undefined below // NOLINT
     NOTYPE  = 0,         ///< no node type or style is set
     KEY     = __(0),     ///< is member of a map
@@ -275,6 +276,7 @@ RYML_EXPORT inline C4_NO_INLINE bool scalar_is_null(csubstr s) noexcept
 } // namespace yml
 } // namespace c4
 
+// NOLINTEND(modernize-avoid-c-style-cast)
 C4_SUPPRESS_WARNING_MSVC_POP
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 

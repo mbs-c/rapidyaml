@@ -23,7 +23,7 @@ class Tree;
 using tag_bits = uint16_t;
 
 /** a bit mask for marking tags for types */
-typedef enum : tag_bits {
+typedef enum : tag_bits { // NOLINT
     TAG_NONE      =  0,
     // container types
     TAG_MAP       =  1, /**< !!map   Unordered set of key: value pairs without duplicates. @see https://yaml.org/type/map.html */

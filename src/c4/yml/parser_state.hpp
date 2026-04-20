@@ -14,7 +14,7 @@ namespace yml {
 using ParserFlag_t = int;
 
 /** Enumeration of the state flags for the parser */
-typedef enum : ParserFlag_t {
+typedef enum : ParserFlag_t { // NOLINT
     RTOP = 0x01 <<  0,   ///< reading at top level
     RUNK = 0x01 <<  1,   ///< reading unknown state (when starting): must determine whether scalar, map or seq
     RMAP = 0x01 <<  2,   ///< reading a map
