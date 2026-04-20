@@ -138,7 +138,7 @@ protected:
         return !is_root && _has_any_(DOC);
     }
 
-protected:
+public:
 
     void _stack_relocate_to_new_arena(csubstr prev, substr curr)
     {
@@ -157,8 +157,7 @@ protected:
     substr _stack_relocate_to_new_arena(csubstr s, csubstr prev, substr curr)
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, prev.is_super(s));
-        auto pos = s.str - prev.str;
-        substr out = {curr.str + pos, s.len};
+        substr out{curr.str + (s.str - prev.str), s.len};
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, curr.is_super(out));
         return out;
     }

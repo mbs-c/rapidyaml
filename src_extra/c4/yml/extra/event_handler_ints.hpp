@@ -453,9 +453,8 @@ public:
     int32_t m_evt_size;
     substr m_arena;
     size_t m_arena_pos;
-    TagDirective m_tag_directives[RYML_MAX_TAG_DIRECTIVES];
-    bool m_has_yaml_directive;
-    bool m_has_docs;
+    id_type m_curr_doc;
+    TagDirectives m_tag_directives;
 
     // undefined at the end
     #define _enable_(bits) _enable__<bits>()
@@ -491,10 +490,8 @@ public:
         m_evt_size = dst_size;
         m_evt_pos = 0;
         m_evt_prev = 0;
-        m_has_docs = false;
-        m_has_yaml_directive = false;
-        for(TagDirective &td : m_tag_directives)
-            td = {};
+        m_curr_doc = 0;
+        m_tag_directives.clear();
     }
 
     /** get the size needed for the event buffer from the previous parse
@@ -525,6 +522,8 @@ public:
         // does not apply here
     }
 
+    C4_ALWAYS_INLINE TagDirectives &tag_directives() { return m_tag_directives; }
+
     /** @} */
 
 public:
@@ -541,8 +540,6 @@ public:
 
     void finish_parse()
     {
-        if((_num_tag_directives() || m_has_yaml_directive) && !m_has_docs)
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "directives cannot be used without a document");
         this->_stack_finish_parse();
     }
 
@@ -587,7 +584,6 @@ public:
             _push();
             _enable_(DOC);
         }
-        m_has_docs = true;
     }
     /** implicit doc end (without ...) */
     void end_doc()
@@ -599,6 +595,7 @@ public:
             _c4dbgp("pop!");
             _pop();
         }
+        ++m_curr_doc;
     }
 
     /** explicit doc start, with --- */
@@ -609,7 +606,6 @@ public:
         _c4dbgp("push!");
         _push();
         _enable_(DOC);
-        m_has_docs = true;
     }
     /** explicit doc end, with ... */
     void end_doc_expl()
@@ -621,7 +617,7 @@ public:
             _c4dbgp("pop!");
             _pop();
         }
-        m_has_yaml_directive = false;
+        ++m_curr_doc;
     }
 
     /** @} */
@@ -748,7 +744,7 @@ public:
      * See the documentation for @ref doc_event_handlers, which has
      * important notes about this event.
      */
-    void actually_val_is_first_key_of_new_map_flow()
+    C4_NO_INLINE void actually_val_is_first_key_of_new_map_flow()
     {
         _c4dbgpf("{}/{}: prev={} actually_val_is_first_key_of_new_map_flow", m_evt_pos, m_evt_size, m_evt_prev);
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_evt_pos > 2);
@@ -761,7 +757,7 @@ public:
         // ... BMAP flag start len (free)
         //          |              |
         //          prev           curr
-        if(m_evt_prev + 1 < m_evt_size)
+        if(m_evt_pos < m_evt_size)
         {
             if(m_evt[m_evt_prev] & ievt::WSTR)
             {
@@ -845,7 +841,7 @@ public:
     void actually_val_is_first_key_of_new_map_block()
     {
         _c4dbgpf("{}/{}: prev={} actually_val_is_first_key_of_new_map_block", m_evt_pos, m_evt_size, m_evt_prev);
-        if(m_evt_prev < m_evt_size)
+        if(m_evt_pos < m_evt_size)
         {
             // interpolate BMAP|VAL|BLCK after the last BDOC
             int32_t pos = _find_last_bdoc(m_evt_pos);
@@ -1058,27 +1054,32 @@ public:
 
     /** @} */
 
-public:
+private:
 
     /** @cond dev*/
-    #define _add_scalar_(i, scalar)                                 \
-    _c4dbgpf("{}/{}: scalar!", i, m_evt_size);                      \
-    _RYML_ASSERT_BASIC_(m_stack.m_callbacks, scalar.is_sub(m_src) || scalar.is_sub(m_arena) || (scalar.str == nullptr)); \
-    _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_evt[i] & ievt::WSTR); \
-    _RYML_ASSERT_BASIC_(m_stack.m_callbacks, i + 3 < m_evt_size);    \
-    if(C4_LIKELY(scalar.is_sub(m_src)))                             \
-    {                                                               \
-        m_evt[i + 1] = (ievt::DataType)(scalar.str - m_src.str);    \
-    }                                                               \
-    else                                                            \
-    {                                                               \
-        m_evt[i] |= ievt::AREN;                                     \
-        m_evt[i + 1] = (ievt::DataType)(scalar.str - m_arena.str);  \
-        _c4dbgpf("{}/{}: arena! ->{}", i, m_evt_size, m_evt[i+1]);  \
-    }                                                               \
-    m_evt[i + 2] = (ievt::DataType)scalar.len;                      \
+    #define _add_scalar_(i, scalar)                                     \
+    _c4dbgpf("{}/{}: scalar!", i, m_evt_size);                          \
+    _RYML_ASSERT_BASIC_(m_stack.m_callbacks,                            \
+                        scalar.is_sub(m_src)                            \
+                        || scalar.is_sub(m_arena)                       \
+                        || (scalar.str == nullptr));                    \
+    _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_evt[i] & ievt::WSTR);    \
+    _RYML_ASSERT_BASIC_(m_stack.m_callbacks, i + 3 < m_evt_size);       \
+    if(C4_LIKELY(scalar.is_sub(m_src)))                                 \
+    {                                                                   \
+        m_evt[i + 1] = (ievt::DataType)(scalar.str - m_src.str);        \
+    }                                                                   \
+    else                                                                \
+    {                                                                   \
+        m_evt[i] |= ievt::AREN;                                         \
+        m_evt[i + 1] = (ievt::DataType)(scalar.str - m_arena.str);      \
+        _c4dbgpf("{}/{}: arena! ->{}", i, m_evt_size, m_evt[i+1]);      \
+    }                                                                   \
+    m_evt[i + 2] = (ievt::DataType)scalar.len;                          \
     m_evt[i + 3] = ievt::PSTR
     /** @endcond */
+
+public:
 
     /** @name YAML anchor/reference events */
     /** @{ */
@@ -1138,27 +1139,15 @@ public:
 
     void set_key_tag(csubstr tag)
     {
-        _c4dbgpf("{}/{}: set key tag ~~~{}~~~", m_evt_pos, m_evt_size, tag);
+        _c4dbgpf("{}/{}: set key tag [{}]~~~{}~~~", m_evt_pos, m_evt_size, tag.len, tag.str ? tag : csubstr("(arena full)"));
         _enable_(c4::yml::KEYTAG);
-        _set_tag(tag, ievt::KEY_);
+        _send_str_(tag, ievt::KEY_|ievt::TAG_);
     }
     void set_val_tag(csubstr tag)
     {
-        _c4dbgpf("{}/{}: set val tag [{}]~~~{}~~~", m_evt_pos, m_evt_size, tag.len, tag);
+        _c4dbgpf("{}/{}: set val tag [{}]~~~{}~~~", m_evt_pos, m_evt_size, tag.len, tag.str ? tag : csubstr("(arena full)"));
         _enable_(c4::yml::VALTAG);
-        _set_tag(tag, ievt::VAL_);
-    }
-    void _set_tag(csubstr tag, ievt::DataType which)
-    {
-        csubstr ttag = _transform_directive(tag);
-        _c4dbgpf("{}/{}: transformed_tag [{}]~~~{}~~~", m_evt_pos, m_evt_size, ttag.len, ttag);
-        if(m_evt_pos + 3 < m_evt_size)
-        {
-            m_evt[m_evt_pos] |= which|ievt::TAG_;
-            _add_scalar_(m_evt_pos, ttag);
-        }
-        m_evt_prev = m_evt_pos;
-        m_evt_pos += 3;
+        _send_str_(tag, ievt::VAL_|ievt::TAG_);
     }
 
     /** @} */
@@ -1171,21 +1160,14 @@ public:
     void add_directive_yaml(csubstr yaml_version)
     {
         _c4dbgpf("{}/{}: %YAML directive! version={}", m_evt_pos, m_evt_size, yaml_version);
-        if(C4_UNLIKELY(m_has_yaml_directive))
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
-        m_has_yaml_directive = true;
         _send_str_(yaml_version, ievt::YAML);
     }
 
     void add_directive_tag(csubstr handle, csubstr prefix)
     {
-        _c4dbgpf("{}/{}: %TAG directive! handle={} prefix={}", m_evt_pos, m_evt_size, handle, prefix);
-        const id_type pos = _num_tag_directives();
-        if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
-        TagDirective &td = m_tag_directives[pos];
-        td.create(handle, prefix);
-        td.next_node_id = (id_type)m_evt_pos;
+        _c4dbgpf("{}/{}: %TAG directive! handle={} prefix={} doc_id={}", m_evt_pos, m_evt_size, handle, prefix, m_curr_doc);
+        if(C4_UNLIKELY(!m_tag_directives.add(handle, prefix, m_curr_doc)))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many %TAG directives");
         _send_str_(handle, ievt::TAGH);
         _send_str_(prefix, ievt::TAGP);
     }
@@ -1194,14 +1176,17 @@ public:
 
 public:
 
-    /** @name YAML arena events */
+    /** @name arena events */
     /** @{ */
 
+    substr arena()
+    {
+        return m_arena.first(m_arena_pos < m_arena.len ? m_arena_pos : m_arena.len);
+    }
     substr arena_rem()
     {
         return C4_LIKELY(m_arena_pos <= m_arena.len) ? m_arena.sub(m_arena_pos) : m_arena.last(0);
     }
-
     /** this may fail, in which case an empty string is returned */
     substr alloc_arena(size_t len)
     {
@@ -1212,13 +1197,6 @@ public:
             s.str = nullptr;
         m_arena_pos += len;
         return s;
-    }
-
-    /** this may fail, in which case an empty string is returned */
-    C4_ALWAYS_INLINE substr alloc_arena(size_t len, substr *relocated)
-    {
-        (void)relocated;
-        return alloc_arena(len);
     }
 
     /** @} */
@@ -1309,49 +1287,6 @@ public:
         m_evt_pos += 3;
     }
 
-    void _clear_tag_directives_()
-    {
-        for(TagDirective &td : m_tag_directives)
-            td = {};
-    }
-    C4_NODISCARD id_type _num_tag_directives() const
-    {
-        // this assumes we have a very small number of tag directives
-        id_type i = 0;
-        for(; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-            if(m_tag_directives[i].handle.empty())
-                break;
-        return i;
-    }
-    csubstr _transform_directive(csubstr tag)
-    {
-        // lookup from the end. We want to find the first directive that
-        // matches the tag and has a target node id leq than the given
-        // node_id.
-        for(id_type i = RYML_MAX_TAG_DIRECTIVES-1; i != NONE; --i)
-        {
-            TagDirective const& td = m_tag_directives[i];
-            if(td.handle.empty())
-                continue;
-            if(tag.begins_with(td.handle) && (td.handle != td.prefix))
-            {
-                substr rem = arena_rem();
-                size_t len = td.transform(tag, rem, m_stack.m_callbacks, /*with_brackets*/false);
-                if(len == 0)
-                    return tag;
-                alloc_arena(len);
-                return rem.first(len <= rem.len ? len : 0);
-            }
-        }
-        if(tag.begins_with('!'))
-        {
-            if(is_custom_tag(tag))
-            {
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "tag not found");
-            }
-        }
-        return tag;
-    }
 #undef _enable_
 #undef _disable_
 #undef _has_any_

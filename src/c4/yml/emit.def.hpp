@@ -138,28 +138,25 @@ void Emitter<Writer>::_emit_yaml(id_type id)
 template<class Writer>
 void Emitter<Writer>::_visit_stream(id_type id)
 {
-    TagDirectiveRange tagds = m_tree->tag_directives();
-    auto write_tag_directives = [&tagds, this](const id_type next_node){
-        TagDirective const* C4_RESTRICT end = tagds.b;
-        while(end < tagds.e)
+    auto write_tag_directives = [this](const id_type next_node){
+        const id_type doc = m_tree->ancestor_doc(next_node);
+        const TagDirectiveRange tagds = m_tree->m_tag_directives.lookup_range(doc);
+        if(tagds.e != tagds.b)
         {
-            if(end->next_node_id > next_node)
-                break;
-            ++end;
-        }
-        const id_type parent = m_tree->parent(next_node);
-        for( ; tagds.b != end; ++tagds.b)
-        {
+            const id_type parent = m_tree->parent(next_node);
             if(next_node != m_tree->first_child(parent))
             {
                 _write_pws_and_pend(_PWS_NEWL);
                 _write("...");
             }
+        }
+        for(TagDirective const& td : tagds)
+        {
             _write_pws_and_pend(_PWS_NONE);
             _write("%TAG ");
-            _write(tagds.b->handle);
+            _write(td.handle);
             _write(' ');
-            _write(tagds.b->prefix);
+            _write(td.prefix);
             _pend_newl();
         }
     };

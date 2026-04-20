@@ -44,9 +44,7 @@ public:
 
     /** @cond dev */
     Tree *C4_RESTRICT m_tree;
-    id_type m_id;
-    size_t m_num_directives;
-    bool m_yaml_directive;
+    id_type m_curr_doc;
 
     #ifdef RYML_DBG
     #define _enable_(bits) _enable__<bits>(); _c4dbgpf("node[{}]: enable {}", m_curr->node_id, #bits)
@@ -63,9 +61,9 @@ public:
     /** @name construction and resetting
      * @{ */
 
-    EventHandlerTree() : EventHandlerStack(), m_tree(), m_id(NONE), m_num_directives(), m_yaml_directive() {}
-    EventHandlerTree(Callbacks const& cb) : EventHandlerStack(cb), m_tree(), m_id(NONE), m_num_directives(), m_yaml_directive() {}
-    EventHandlerTree(Tree *tree, id_type id) : EventHandlerStack(tree->callbacks()), m_tree(tree), m_id(id), m_num_directives(), m_yaml_directive()
+    EventHandlerTree() : EventHandlerStack(), m_tree(), m_curr_doc() {}
+    EventHandlerTree(Callbacks const& cb) : EventHandlerStack(cb), m_tree(), m_curr_doc() {}
+    EventHandlerTree(Tree *tree, id_type id) : EventHandlerStack(tree->callbacks()), m_tree(tree), m_curr_doc()
     {
         reset(tree, id);
     }
@@ -81,7 +79,6 @@ public:
                 if(C4_UNLIKELY(!tree->has_key(id)))
                     _RYML_ERR_BASIC_(tree->callbacks(), "destination node belongs to a map and has no key");
         m_tree = tree;
-        m_id = id;
         if(m_tree->is_root(id))
         {
             _stack_reset_root();
@@ -93,11 +90,13 @@ public:
             _reset_parser_state(m_parent, id, m_tree->parent(id));
             _reset_parser_state(m_curr, id, id);
         }
-        m_num_directives = 0;
-        m_yaml_directive = false;
+        m_curr_doc = m_tree->ancestor_doc(id);
     }
 
     Callbacks const& callbacks() const { return m_stack.m_callbacks; }
+
+    C4_ALWAYS_INLINE TagDirectives& tag_directives() { return m_tree->m_tag_directives; }
+
     /** @} */
 
 public:
@@ -114,8 +113,6 @@ public:
     void finish_parse()
     {
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree != nullptr);
-        if(m_num_directives && !m_tree->is_stream(m_tree->root_id()))
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "directives cannot be used without a document");
         this->_stack_finish_parse();
         /* This pointer is temporary. Remember that:
          *
@@ -144,9 +141,9 @@ public:
     /** @name YAML stream events */
     /** @{ */
 
-    C4_ALWAYS_INLINE void begin_stream() const noexcept { /*nothing to do*/ }
+    C4_ALWAYS_INLINE void begin_stream() const noexcept { /* nothing to do */ }
 
-    C4_ALWAYS_INLINE void end_stream() const noexcept { /*nothing to do*/ }
+    C4_ALWAYS_INLINE void end_stream() const noexcept { /* nothing to do */ }
 
     /** @} */
 
@@ -166,11 +163,13 @@ public:
             _push();
             _enable_(DOC);
         }
+        m_curr_doc = m_curr->node_id;
     }
     /** implicit doc end (without ...) */
     void end_doc()
     {
         _c4dbgp("end_doc");
+        m_curr_doc = m_tree->size();
         if(_stack_should_pop_on_end_doc())
         {
             _remove_speculative();
@@ -184,7 +183,12 @@ public:
     {
         _c4dbgp("begin_doc_expl");
         _RYML_ASSERT_VISIT_(m_stack.m_callbacks, m_tree->root_id() == m_curr->node_id, m_tree, m_curr->node_id);
-        if(!m_tree->is_stream(m_tree->root_id())) //if(_should_push_on_begin_doc())
+        if(m_tree->is_stream(m_tree->root_id())) //if(_should_push_on_begin_doc())
+        {
+            _c4dbgp("push!");
+            _push();
+        }
+        else
         {
             _c4dbgp("ensure stream");
             _set_root_as_stream();
@@ -210,24 +214,20 @@ public:
                 m_curr->tr_data = m_tree->_p(m_curr->node_id);
             }
         }
-        else
-        {
-            _c4dbgp("push!");
-            _push();
-        }
         _enable_(DOC);
+        m_curr_doc = m_curr->node_id;
     }
     /** explicit doc end, with ... */
     void end_doc_expl()
     {
         _c4dbgp("end_doc_expl");
+        m_curr_doc = m_tree->size();
         _remove_speculative();
         if(_stack_should_pop_on_end_doc())
         {
             _c4dbgp("pop!");
             _pop();
         }
-        m_yaml_directive = false;
     }
 
     /** @} */
@@ -537,13 +537,13 @@ public:
     /** @name YAML tag events */
     /** @{ */
 
-    void set_key_tag(csubstr tag) noexcept
+    void set_key_tag(csubstr tag)
     {
         _c4dbgpf("node[{}]: set key tag: [{}]~~~{}~~~", m_curr->node_id, tag.len, tag);
         _enable_(KEYTAG);
         m_curr->tr_data->m_key.tag = tag;
     }
-    void set_val_tag(csubstr tag) noexcept
+    void set_val_tag(csubstr tag)
     {
         _c4dbgpf("node[{}]: set val tag: [{}]~~~{}~~~", m_curr->node_id, tag.len, tag);
         _enable_(VALTAG);
@@ -559,21 +559,15 @@ public:
 
     void add_directive_yaml(csubstr yaml_version)
     {
-        (void)yaml_version;
         _c4dbgpf("%YAML directive! version={}", yaml_version);
-        if(C4_UNLIKELY(m_yaml_directive))
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
-        m_yaml_directive = true;
-        ++m_num_directives;
+        (void)yaml_version;
     }
 
     void add_directive_tag(csubstr handle, csubstr prefix)
     {
-        _c4dbgpf("%TAG directive! handle={} prefix={}", handle, prefix);
-        TagDirective td;
-        td.create(handle, prefix);
-        (void)m_tree->add_tag_directive(td);
-        ++m_num_directives;
+        _c4dbgpf("%TAG directive! handle={} prefix={} id={}", handle, prefix, m_curr_doc);
+        if(C4_UNLIKELY(!m_tree->m_tag_directives.add(handle, prefix, m_curr_doc)))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many %TAG directives");
     }
 
     /** @} */
@@ -583,28 +577,19 @@ public:
     /** @name arena functions */
     /** @{ */
 
+    substr arena()
+    {
+        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree);
+        return m_tree->m_arena.first(m_tree->m_arena_pos);
+    }
+    substr arena_rem()
+    {
+        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree);
+        return m_tree->m_arena.sub(m_tree->m_arena_pos);
+    }
     substr alloc_arena(size_t len)
     {
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree);
-        csubstr prev = m_tree->arena();
-        substr out = m_tree->alloc_arena(len);
-        substr curr = m_tree->arena();
-        if(curr.str != prev.str)
-            _stack_relocate_to_new_arena(prev, curr);
-        return out;
-    }
-
-    substr alloc_arena(size_t len, substr *relocated)
-    {
-        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree);
-        csubstr prev = m_tree->arena();
-        if(!prev.is_super(*relocated))
-            return alloc_arena(len);
-        substr out = alloc_arena(len);
-        substr curr = m_tree->arena();
-        if(curr.str != prev.str)
-            *relocated = _stack_relocate_to_new_arena(*relocated, prev, curr);
-        return out;
+        return m_tree->alloc_arena(len);
     }
 
     /** @} */
@@ -742,13 +727,16 @@ public:
 
     void _remove_speculative()
     {
-        _c4dbgp("remove speculative node");
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_tree);
         _RYML_ASSERT_BASIC_(m_tree->callbacks(), !m_tree->empty());
         const id_type last_added = m_tree->size() - 1;
-        if(m_tree->has_parent(last_added))
-            if(m_tree->_p(last_added)->m_type == NOTYPE)
-                m_tree->remove(last_added);
+        const NodeData *C4_RESTRICT d = m_tree->_p(last_added);
+        if(d->m_parent != NONE && d->m_type == NOTYPE)
+        {
+            _c4dbgpf("remove speculative: currparent={} node={} parent(node)={}", m_parent->node_id, last_added, d->m_parent);
+            m_tree->remove(last_added);
+            --m_curr->node_id;
+        }
     }
 
     void _remove_speculative_with_parent()
@@ -761,6 +749,7 @@ public:
         {
             _c4dbgpf("remove speculative node with parent. parent={} node={} parent(node)={}", m_parent->node_id, last_added, m_tree->parent(last_added));
             m_tree->remove(last_added);
+            --m_curr->node_id;
         }
     }
 

@@ -520,10 +520,25 @@ public:
     id_type sibling(id_type node, id_type pos) const { return child(_p(node)->m_parent, pos); }
     id_type find_sibling(id_type node, csubstr const& key) const { return find_child(_p(node)->m_parent, key); }
 
-    id_type doc(id_type i) const { id_type rid = root_id(); _RYML_ASSERT_VISIT_(m_callbacks, is_stream(rid), this, rid); return child(rid, i); } //!< gets the @p i document node index. requires that the root node is a stream.
-
     id_type depth_asc(id_type node) const; /**< O(log(num_tree_nodes)) get the ascending depth of the node: number of levels between root and node */
     id_type depth_desc(id_type node) const; /**< O(num_tree_nodes) get the descending depth of the node: number of levels between node and deepest child */
+
+    /** gets the @p i document node index. requires that the root node is a stream. */
+    id_type doc(id_type i) const { id_type rid = root_id(); _RYML_ASSERT_VISIT_(m_callbacks, is_stream(rid), this, rid); return child(rid, i); }
+
+    /** get the document which is a parent document of node i, or the root if the tree is not a stream */
+    id_type ancestor_doc(id_type node) const
+    {
+        NodeData const *nd;
+        do
+        {
+            nd = _p(node);
+            if(nd->m_type.is_doc() || nd->m_parent == NONE)
+                return node;
+            node = nd->m_parent;
+        } while(nd->m_parent != NONE);
+        return node;
+    }
 
     /** @} */
 
@@ -643,21 +658,20 @@ public:
     void normalize_tags_long();
 
     id_type num_tag_directives() const;
-    id_type add_tag_directive(TagDirective const& td);
+    void add_tag_directive(csubstr handle, csubstr prefix, id_type id);
     void clear_tag_directives();
 
     /** resolve the given tag, appearing at node_id. Write the result into output.
      * @return the number of characters required for the resolved tag */
     size_t resolve_tag(substr output, csubstr tag, id_type node_id) const;
+    /** Wrapper for @ref Tree::resolve_tag(), returning a substring */
     csubstr resolve_tag_sub(substr output, csubstr tag, id_type node_id) const
     {
         size_t needed = resolve_tag(output, tag, node_id);
         return needed <= output.len ? output.first(needed) : output;
     }
 
-    TagDirective const* begin_tag_directives() const { return m_tag_directives; }
-    TagDirective const* end_tag_directives() const { return m_tag_directives + num_tag_directives(); }
-    c4::yml::TagDirectiveRange tag_directives() const { return c4::yml::TagDirectiveRange{begin_tag_directives(), end_tag_directives()}; }
+    c4::yml::TagDirectiveRange tag_directives() const { return m_tag_directives.directives(); }
 
     RYML_DEPRECATED("use c4::yml::tag_directive_const_iterator") typedef TagDirective const* tag_directive_const_iterator;
     RYML_DEPRECATED("use c4::yml::TagDirectiveRange") typedef c4::yml::TagDirectiveRange TagDirectiveProxy;
@@ -1306,7 +1320,7 @@ public:
 
     Callbacks m_callbacks;
 
-    TagDirective m_tag_directives[RYML_MAX_TAG_DIRECTIVES];
+    TagDirectives m_tag_directives;
 };
 
 

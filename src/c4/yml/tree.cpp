@@ -207,8 +207,7 @@ void Tree::_clear()
     m_free_tail = 0;
     m_arena = {};
     m_arena_pos = 0;
-    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-        m_tag_directives[i] = {};
+    m_tag_directives.clear();
 }
 
 void Tree::_copy(Tree const& that)
@@ -236,8 +235,7 @@ void Tree::_copy(Tree const& that)
         _relocate(arena); // does a memcpy of the arena and updates nodes using the old arena
         m_arena = arena;
     }
-    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-        m_tag_directives[i] = that.m_tag_directives[i];
+    m_tag_directives.clear();
 }
 
 void Tree::_move(Tree & that) noexcept
@@ -252,8 +250,7 @@ void Tree::_move(Tree & that) noexcept
     m_free_tail = that.m_free_tail;
     m_arena = that.m_arena;
     m_arena_pos = that.m_arena_pos;
-    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-        m_tag_directives[i] = that.m_tag_directives[i];
+    m_tag_directives = that.m_tag_directives;
     that._clear();
 }
 
@@ -345,8 +342,7 @@ void Tree::clear()
         m_free_head = NONE;
         m_free_tail = NONE;
     }
-    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-        m_tag_directives[i] = {};
+    m_tag_directives.clear();
 }
 
 void Tree::_claim_root()
@@ -862,40 +858,62 @@ void Tree::set_root_as_stream()
     id_type root = root_id();
     if(is_stream(root))
         return;
+    _c4dbgpf("set_root_as_stream. rootty={}", type(root).type);
+    bool empty_root = ((type(root) & (SEQ|MAP|VAL)) == 0);
+    for(TagDirective &C4_RESTRICT td : m_tag_directives)
+    {
+        if(td.handle.empty())
+            break;
+        if(td.doc_id >= m_cap || _p(td.doc_id)->m_parent == NONE)
+        {
+            _c4dbgpf("tagd[{}]: id={}->NONE", &td-m_tag_directives.m_directives, td.doc_id);
+            td.doc_id = NONE;
+        }
+    }
     // don't use _add_flags() because it's checked and will fail
+    id_type next_doc;
     if(!has_children(root))
     {
         if(is_container(root))
         {
-            id_type next_doc = append_child(root);
+            next_doc = append_child(root);
             _copy_props_wo_key(next_doc, root);
             _p(next_doc)->m_type.add(DOC);
         }
         else
         {
             _p(root)->m_type.add(SEQ);
-            id_type next_doc = append_child(root);
+            next_doc = append_child(root);
             _copy_props_wo_key(next_doc, root);
             _p(next_doc)->m_type.add(DOC);
             _p(next_doc)->m_type.rem(SEQ);
         }
-        _p(root)->m_type = STREAM;
-        return;
     }
-    _RYML_ASSERT_VISIT_(m_callbacks, !has_key(root), this, root);
-    id_type next_doc = append_child(root);
-    _copy_props_wo_key(next_doc, root);
-    _add_flags(next_doc, DOC);
-    for(id_type prev = NONE, ch = first_child(root), next = next_sibling(ch); ch != NONE; )
+    else
     {
-        if(ch == next_doc)
-            break;
-        move(ch, next_doc, prev);
-        prev = ch;
-        ch = next;
-        next = next_sibling(next);
+        _RYML_ASSERT_VISIT_(m_callbacks, !has_key(root), this, root);
+        next_doc = append_child(root);
+        _copy_props_wo_key(next_doc, root);
+        _add_flags(next_doc, DOC);
+        for(id_type prev = NONE, ch = first_child(root), next = next_sibling(ch); ch != NONE; )
+        {
+            if(ch == next_doc)
+                break;
+            move(ch, next_doc, prev);
+            prev = ch;
+            ch = next;
+            next = next_sibling(next);
+        }
     }
     _p(root)->m_type = STREAM;
+    for(TagDirective &C4_RESTRICT td : m_tag_directives)
+    {
+        if(td.handle.empty())
+            break;
+        id_type id = (td.doc_id != NONE) ? next_doc : (empty_root ? first_child(root) : m_free_head);
+        _c4dbgpf("tagd[{}]: id={}->{}", &td-m_tag_directives.m_directives, td.doc_id, id);
+        td.doc_id = id;
+    }
 }
 
 
@@ -1421,103 +1439,73 @@ void Tree::set_style_conditionally(id_type node,
 //-----------------------------------------------------------------------------
 id_type Tree::num_tag_directives() const
 {
-    // this assumes we have a very small number of tag directives
-    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-        if(m_tag_directives[i].handle.empty())
-            return i;
-    return RYML_MAX_TAG_DIRECTIVES;
+    return m_tag_directives.size();
 }
 
 void Tree::clear_tag_directives()
 {
-    for(TagDirective &td : m_tag_directives)
-        td = {};
+    m_tag_directives.clear();
 }
 
-id_type Tree::add_tag_directive(TagDirective const& td)
+void Tree::add_tag_directive(csubstr handle, csubstr prefix, id_type id)
 {
-    _RYML_CHECK_BASIC_(m_callbacks, !td.handle.empty());
-    _RYML_CHECK_BASIC_(m_callbacks, !td.prefix.empty());
-    _RYML_CHECK_BASIC_(m_callbacks, is_valid_tag_handle(td.handle));
-    id_type pos = num_tag_directives();
-    _RYML_CHECK_BASIC_(m_callbacks, pos < RYML_MAX_TAG_DIRECTIVES);
-    m_tag_directives[pos] = td;
-    if(td.next_node_id == NONE)
-    {
-        m_tag_directives[pos].next_node_id = size();
-        if(!empty())
-        {
-            const id_type prev = size() - 1;
-            if(is_root(prev) && type(prev) != NOTYPE && !is_stream(prev))
-                ++m_tag_directives[pos].next_node_id;
-        }
-    }
-    return pos;
+    _RYML_CHECK_BASIC_(m_callbacks,
+                       !handle.empty()
+                       &&
+                       !prefix.empty()
+                       &&
+                       is_valid_tag_handle(handle)
+                       &&
+                       m_tag_directives.add(handle, prefix, id));
 }
 
 size_t Tree::resolve_tag(substr output, csubstr tag, id_type node_id) const
 {
-    // lookup from the end. We want to find the first directive that
-    // matches the tag and has a target node id leq than the given
-    // node_id.
-    for(id_type i = RYML_MAX_TAG_DIRECTIVES-1; i != (id_type)-1; --i)
-    {
-        auto const& td = m_tag_directives[i];
-        if(td.handle.empty())
-            continue;
-        if(tag.begins_with(td.handle) && td.next_node_id <= node_id)
-            return td.transform(tag, output, m_callbacks);
-    }
-    if(tag.begins_with('!'))
-    {
-        if(is_custom_tag(tag))
-        {
-            _RYML_ERR_VISIT_(m_callbacks, this, node_id, "tag directive not found");
-        }
-    }
-    return 0; // return 0 to signal that the tag is local and cannot be resolved
+    size_t reqsz = 0;
+    m_tag_directives.resolve(output, &reqsz, tag, node_id, Location{}, callbacks());
+    return reqsz;
 }
 
 namespace {
-csubstr _transform_tag(Tree *t, csubstr tag, id_type node)
+csubstr _transform_tag(Tree *t, csubstr tag, id_type node, id_type doc_id)
 {
-    _c4dbgpf("[{}] resolving tag ~~~{}~~~", node, tag);
-    size_t required_size = t->resolve_tag(substr{}, tag, node);
+    _c4dbgpf("doc={} [{}] resolving tag ~~~{}~~~", doc_id, node, tag);
+    size_t required_size = t->resolve_tag(substr{}, tag, doc_id);
     if(!required_size)
     {
         if(tag.begins_with("!<"))
             tag = tag.sub(1);
-        _c4dbgpf("[{}] resolved tag: ~~~{}~~~", node, tag);
+        _c4dbgpf("doc={} [{}] resolved tag: ~~~{}~~~", doc_id, node, tag);
         return tag;
     }
     const char *prev_arena = t->arena().str;(void)prev_arena;
     substr buf = t->alloc_arena(required_size);
     _RYML_ASSERT_VISIT_(t->m_callbacks, t->arena().str == prev_arena, t, node);
-    size_t actual_size = t->resolve_tag(buf, tag, node);
+    size_t actual_size = t->resolve_tag(buf, tag, doc_id);
     _RYML_ASSERT_VISIT_(t->m_callbacks, actual_size <= required_size, t, node);
-    _c4dbgpf("[{}] resolved tag: ~~~{}~~~", node, buf.first(actual_size));
+    _c4dbgpf("doc={} [{}] resolved tag: ~~~{}~~~", doc_id, node, buf.first(actual_size));
     return buf.first(actual_size);
 }
-void _resolve_tags(Tree *t, id_type node)
+void _resolve_tags(Tree *t, id_type node, id_type doc_id)
 {
     NodeData *C4_RESTRICT d = t->_p(node);
     if(d->m_type & KEYTAG)
-        d->m_key.tag = _transform_tag(t, d->m_key.tag, node);
+        d->m_key.tag = _transform_tag(t, d->m_key.tag, node, doc_id);
     if(d->m_type & VALTAG)
-        d->m_val.tag = _transform_tag(t, d->m_val.tag, node);
+        d->m_val.tag = _transform_tag(t, d->m_val.tag, node, doc_id);
     for(id_type child = t->first_child(node); child != NONE; child = t->next_sibling(child))
-        _resolve_tags(t, child);
+        _resolve_tags(t, child, doc_id);
 }
-size_t _count_resolved_tags_size(Tree const* t, id_type node)
+size_t _count_resolved_tags_size(Tree const* t, id_type node, id_type doc_id)
 {
     size_t sz = 0;
     NodeData const* C4_RESTRICT d = t->_p(node);
     if(d->m_type & KEYTAG)
-        sz += t->resolve_tag(substr{}, d->m_key.tag, node);
+        sz += t->resolve_tag(substr{}, d->m_key.tag, doc_id);
     if(d->m_type & VALTAG)
-        sz += t->resolve_tag(substr{}, d->m_val.tag, node);
+        sz += t->resolve_tag(substr{}, d->m_val.tag, doc_id);
     for(id_type child = t->first_child(node); child != NONE; child = t->next_sibling(child))
-        sz += _count_resolved_tags_size(t, child);
+        sz += _count_resolved_tags_size(t, child, doc_id);
     return sz;
 }
 void _normalize_tags(Tree *t, id_type node)
@@ -1546,10 +1534,24 @@ void Tree::resolve_tags()
 {
     if(empty())
         return;
-    size_t needed_size = _count_resolved_tags_size(this, root_id());
-    if(needed_size)
-        reserve_arena(arena_size() + needed_size);
-    _resolve_tags(this, root_id());
+    size_t needed_size = 0;
+    id_type r = root_id();
+    if(!is_stream(r))
+    {
+        needed_size = _count_resolved_tags_size(this, root_id(), r);
+        if(needed_size)
+            reserve_arena(arena_size() + needed_size);
+        _resolve_tags(this, r, r);
+    }
+    else
+    {
+        for(id_type doc_id = first_child(r); doc_id != NONE; doc_id = next_sibling(doc_id))
+            needed_size += _count_resolved_tags_size(this, doc_id, doc_id);
+        if(needed_size)
+            reserve_arena(arena_size() + needed_size);
+        for(id_type doc_id = first_child(r); doc_id != NONE; doc_id = next_sibling(doc_id))
+            _resolve_tags(this, doc_id, doc_id);
+    }
 }
 
 void Tree::normalize_tags()

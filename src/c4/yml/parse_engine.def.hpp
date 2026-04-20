@@ -271,7 +271,9 @@ ParseEngine<EventHandler>::ParseEngine(EventHandler *evt_handler, ParserOptions 
     , m_evt_handler(evt_handler)
     , m_pending_anchors()
     , m_pending_tags()
-    , m_doc_empty(false)
+    , m_has_directives_yaml(false)
+    , m_has_directives(false)
+    , m_doc_empty(true)
     , m_prev_colon(npos)
     , m_prev_val_end(npos)
     , m_encoding(NOBOM)
@@ -291,7 +293,9 @@ ParseEngine<EventHandler>::ParseEngine(ParseEngine &&that) noexcept
     , m_evt_handler(that.m_evt_handler)
     , m_pending_anchors(that.m_pending_anchors)
     , m_pending_tags(that.m_pending_tags)
-    , m_doc_empty(false)
+    , m_has_directives_yaml(that.m_has_directives_yaml)
+    , m_has_directives(that.m_has_directives)
+    , m_doc_empty(that.m_doc_empty)
     , m_prev_colon(npos)
     , m_prev_val_end(npos)
     , m_encoding(NOBOM)
@@ -311,7 +315,9 @@ ParseEngine<EventHandler>::ParseEngine(ParseEngine const& that)
     , m_evt_handler(that.m_evt_handler)
     , m_pending_anchors(that.m_pending_anchors)
     , m_pending_tags(that.m_pending_tags)
-    , m_doc_empty(false)
+    , m_has_directives_yaml(that.m_has_directives_yaml)
+    , m_has_directives(that.m_has_directives)
+    , m_doc_empty(that.m_doc_empty)
     , m_prev_colon(npos)
     , m_prev_val_end(npos)
     , m_encoding(NOBOM)
@@ -339,6 +345,8 @@ ParseEngine<EventHandler>& ParseEngine<EventHandler>::operator=(ParseEngine &&th
     m_evt_handler = that.m_evt_handler;
     m_pending_anchors = that.m_pending_anchors;
     m_pending_tags = that.m_pending_tags;
+    m_has_directives_yaml = that.m_has_directives_yaml;
+    m_has_directives = that.m_has_directives;
     m_doc_empty = that.m_doc_empty;
     m_prev_colon = that.m_prev_colon;
     m_prev_val_end = that.m_prev_val_end;
@@ -363,6 +371,8 @@ ParseEngine<EventHandler>& ParseEngine<EventHandler>::operator=(ParseEngine cons
         m_evt_handler = that.m_evt_handler;
         m_pending_anchors = that.m_pending_anchors;
         m_pending_tags = that.m_pending_tags;
+        m_has_directives_yaml = that.m_has_directives_yaml;
+        m_has_directives = that.m_has_directives;
         m_doc_empty = that.m_doc_empty;
         m_prev_colon = that.m_prev_colon;
         m_prev_val_end = that.m_prev_val_end;
@@ -387,6 +397,8 @@ void ParseEngine<EventHandler>::_clr()
     m_evt_handler = {};
     m_pending_anchors = {};
     m_pending_tags = {};
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     m_prev_colon = npos;
     m_prev_val_end = npos;
@@ -418,6 +430,8 @@ void ParseEngine<EventHandler>::_reset()
 {
     m_pending_anchors = {};
     m_pending_tags = {};
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     m_prev_colon = npos;
     m_prev_val_end = npos;
@@ -444,9 +458,19 @@ void ParseEngine<EventHandler>::_relocate_arena(csubstr prev_arena, substr next_
     _ryml_relocate(m_buf);
     _ryml_relocate(m_newline_offsets_buf);
     for(size_t i = 0; i < m_pending_tags.num_entries; ++i)
+    {
         _ryml_relocate(m_pending_tags.annotations[i].str); // LCOV_EXCL_LINE
+    }
     for(size_t i = 0; i < m_pending_anchors.num_entries; ++i)
+    {
         _ryml_relocate(m_pending_anchors.annotations[i].str); // LCOV_EXCL_LINE
+    }
+    TagDirectives &tds = m_evt_handler->tag_directives();
+    for(size_t i = 0, sz = tds.size(); i < sz; ++i)
+    {
+        _ryml_relocate(tds.m_directives[i].handle); // LCOV_EXCL_LINE
+        _ryml_relocate(tds.m_directives[i].prefix); // LCOV_EXCL_LINE
+    }
     #undef _ryml_relocate
 }
 
@@ -454,6 +478,26 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_s_relocate_arena(void* data, csubstr prev_arena, substr next_arena)
 {
     ((ParseEngine*)data)->_relocate_arena(prev_arena, next_arena);
+}
+
+template<class EventHandler>
+substr ParseEngine<EventHandler>::_alloc_arena(size_t len, substr *relocated)
+{
+    csubstr prev = m_evt_handler->arena();
+    substr out = m_evt_handler->alloc_arena(len);
+    substr curr = m_evt_handler->arena();
+    if(curr.str != prev.str)
+    {
+        _c4dbgp("relocate to new arena");
+        m_evt_handler->_stack_relocate_to_new_arena(prev, curr);
+        if(relocated && prev.is_super(*relocated))
+        {
+            _c4dbgp("relocate str to new arena");
+            if(curr.str != prev.str)
+                *relocated = m_evt_handler->_stack_relocate_to_new_arena(*relocated, prev, curr);
+        }
+    }
+    return out;
 }
 
 
@@ -741,6 +785,11 @@ csubstr ParseEngine<EventHandler>::_scan_tag()
     {
         _c4dbgp("begins with '!'");
         _set_first(t, t.first_of(" ,]}\t"));
+        if(C4_UNLIKELY(t.first_of("[{") != npos))
+            _c4err("invalid tag");
+        _line_progressed(t.len);
+        if(m_options.resolve_tags_all() || (m_options.resolve_tags() && is_custom_tag(t)))
+            t = _resolve_tag(t);
     }
     else
     {
@@ -749,12 +798,9 @@ csubstr ParseEngine<EventHandler>::_scan_tag()
         if(C4_UNLIKELY(pos == npos))
             _c4err("invalid tag");
         _set_first_strict(t, pos+1);
+        _line_progressed(t.len);
+        t = t.sub(1);
     }
-    if(C4_UNLIKELY(t.first_of("[{") != npos))
-    {
-        _c4err("invalid tag");
-    }
-    _line_progressed(t.len);
     _maybe_skip_whitespace_tokens();
     return t;
 }
@@ -1733,6 +1779,8 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_begin2_doc()
 {
     _c4dbgp("begin_doc");
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     add_flags(RDOC);
     m_evt_handler->begin_doc();
@@ -1743,6 +1791,8 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_begin2_doc_expl()
 {
     _c4dbgp("begin_doc_expl");
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     add_flags(RDOC);
     m_evt_handler->begin_doc_expl();
@@ -1849,9 +1899,9 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_end_stream()
 {
     _c4dbgpf("end_stream, level={} node_id={}", m_evt_handler->m_curr->level, m_evt_handler->m_curr->node_id);
-    if(has_all(RSEQ|RFLOW))
+    if(C4_UNLIKELY(has_all(RSEQ|RFLOW)))
         _c4err("missing terminating ]");
-    else if(has_all(RMAP|RFLOW))
+    else if(C4_UNLIKELY(has_all(RMAP|RFLOW)))
         _c4err("missing terminating }");
     if(m_evt_handler->m_stack.size() > 1)
         _handle_indentation_pop(m_evt_handler->m_stack.begin());
@@ -1873,6 +1923,8 @@ void ParseEngine<EventHandler>::_end_stream()
         }
     }
     m_evt_handler->end_stream();
+    if(C4_UNLIKELY(m_has_directives))
+        _c4err("directives cannot be used without a document");
 }
 
 
@@ -1986,7 +2038,7 @@ void ParseEngine<EventHandler>::_handle_indentation_pop_from_block_map()
 template<class EventHandler>
 void ParseEngine<EventHandler>::_check_valid_newline_in_quoted_scalar()
 {
-    if(has_all(RMAP|RBLCK|RKEY))
+    if(C4_UNLIKELY(has_all(RMAP|RBLCK|RKEY)))
     {
         _c4err("multiline quoted keys are invalid");
     }
@@ -3591,7 +3643,7 @@ csubstr ParseEngine<EventHandler>::_filter_scalar_dquot(substr s)
     {
         const size_t len = r.required_len();
         _c4dbgpf("filtering dquo scalar: not enough space: needs {}, have {}", len, s.len);
-        substr dst = m_evt_handler->alloc_arena(len, &s);
+        substr dst = _alloc_arena(len, &s);
         _c4dbgpf("filtering dquo scalar: dst.len={}", dst.len);
         if(dst.str)
         {
@@ -3626,7 +3678,7 @@ csubstr ParseEngine<EventHandler>::_move_scalar_left_and_add_newline(substr s)
     }
     else
     {
-        substr dst = m_evt_handler->alloc_arena(s.len + 1);
+        substr dst = _alloc_arena(s.len + 1, &s);
         if(s.len)
             memcpy(dst.str, s.str, s.len);
         dst[s.len] = '\n';
@@ -4211,7 +4263,7 @@ void ParseEngine<EventHandler>::_add_annotation(Annotation *C4_RESTRICT dst, csu
 template<class EventHandler>
 void ParseEngine<EventHandler>::_add_annotation(Annotation *C4_RESTRICT dst, csubstr str, size_t indentation, size_t line)
 {
-    _c4dbgpf("store annotation[{}]: '{}' indentation={} line={}", dst->num_entries, str, indentation, line);
+    _c4dbgpf("store annotation[{}]: '{}' indentation={} line={}", dst->num_entries, str.str ? str : csubstr("(arena full)"), indentation, line);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, dst->num_entries < C4_COUNTOF(dst->annotations), m_evt_handler->m_curr->pos); // NOLINT(bugprone-sizeof-expression)
     dst->annotations[dst->num_entries].str = str;
     dst->annotations[dst->num_entries].indentation = indentation;
@@ -4236,7 +4288,7 @@ bool ParseEngine<EventHandler>::_handle_annotations_before_unexpected_flow_token
         _c4dbgpf("handle_annotations_before_unexpected_flow_comma_rkey, #tags={}", m_pending_tags.num_entries);
         if(C4_LIKELY(m_pending_tags.num_entries == 1))
         {
-            m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
         else
@@ -4271,7 +4323,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_blck_key_scalar()
         _c4dbgpf("annotations_before_blck_key_scalar, #tags={}", m_pending_tags.num_entries);
         if(C4_LIKELY(m_pending_tags.num_entries == 1))
         {
-            m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
         else
@@ -4303,7 +4355,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_blck_val_scalar()
         _c4dbgpf("annotations_before_blck_val_scalar, #tags={}", m_pending_tags.num_entries);
         if(C4_LIKELY(m_pending_tags.num_entries == 1))
         {
-            m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
         else
@@ -4341,7 +4393,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck(size_t 
         if(m_pending_tags.annotations[0].line < current_line)
         {
             _c4dbgp("...tag is for the map. setting it.");
-            m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
     }
@@ -4484,6 +4536,34 @@ void ParseEngine<EventHandler>::_handle_valref(csubstr alias)
 }
 
 template<class EventHandler>
+csubstr ParseEngine<EventHandler>::_resolve_tag(csubstr tag)
+{
+    _c4dbgpf("resolving tag: {} curr_doc={}", _prs(tag), m_evt_handler->m_curr_doc);
+    size_t bufsz = 0;
+    substr buf = m_evt_handler->arena_rem();
+    TagDirectives const& C4_RESTRICT tds = m_evt_handler->tag_directives();
+    csubstr ttag = tds.resolve(buf, &bufsz, tag, m_evt_handler->m_curr_doc,
+                               m_evt_handler->m_curr->pos,
+                               m_evt_handler->m_stack.m_callbacks);
+    _c4dbgpf("resolving tag: bufsz={}", bufsz);
+    if(bufsz)
+    {
+        substr bufretry = _alloc_arena(bufsz, &tag);
+        if(C4_UNLIKELY(bufsz > buf.len))
+        {
+            if(bufretry.str) // some handlers may be just counting the required arena size
+            {
+                ttag = tds.resolve(bufretry, &bufsz, tag, m_evt_handler->m_curr_doc,
+                                   m_evt_handler->m_curr->pos,
+                                   m_evt_handler->m_stack.m_callbacks);
+            }
+        }
+    }
+    _c4dbgpf("resolving tag: {} -->  {}", _prs(tag), _prs(ttag.str ? ttag : csubstr("(arena full)")));
+    return ttag;
+}
+
+template<class EventHandler>
 bool ParseEngine<EventHandler>::_validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const
 {
     _c4assert(directive->begins_with("%YAML"));
@@ -4541,6 +4621,9 @@ void ParseEngine<EventHandler>::_handle_directive(csubstr directive)
     _c4dbgpf("handle_directive: rem={}", _prs(directive, true));
     _c4assert(m_evt_handler->m_curr->line_contents.rem.begins_with('%'));
     _c4assert(directive.str == m_evt_handler->m_curr->line_contents.rem.str);
+    const char *err = nullptr;
+    csubstr rem;
+    size_t pos;
     auto isdirective = [](csubstr str, csubstr dir) {
         if(str.begins_with(dir))
         {
@@ -4554,24 +4637,43 @@ void ParseEngine<EventHandler>::_handle_directive(csubstr directive)
         csubstr handle;
         csubstr prefix;
         if(C4_UNLIKELY(!_validate_directive_tag(&directive, &handle, &prefix)))
-            _c4err("invalid %TAG directive");
+        {
+            err = "invalid %TAG directive";
+            goto directive_error; // NOLINT
+        }
         m_evt_handler->add_directive_tag(handle, prefix);
     }
     else if(isdirective(directive, "%YAML"))
     {
         csubstr version;
         if(C4_UNLIKELY(!_validate_directive_yaml(&directive, &version)))
-            _c4err("invalid %YAML directive");
+        {
+            err = "invalid %YAML directive";
+            goto directive_error; // NOLINT
+        }
+        if(C4_UNLIKELY(m_has_directives_yaml))
+        {
+            err = "multiple %YAML directives";
+            goto directive_error; // NOLINT
+        }
+        m_has_directives_yaml = true;
         m_evt_handler->add_directive_yaml(version);
     }
-    csubstr rem = m_evt_handler->m_curr->line_contents.rem;
-    size_t pos = rem.first_not_of(" \t", directive.len);
+    m_has_directives = true;
+    rem = m_evt_handler->m_curr->line_contents.rem;
+    pos = rem.first_not_of(" \t", directive.len);
     pos = pos != npos ? pos : rem.len;
     _line_progressed(pos);
     rem = rem.sub(pos);
     _c4dbgpf("handle_directive: rest={}", _prs(rem));
-    if(rem.len && !rem.begins_with('#'))
-        _c4err("invalid tokens after directive");
+    if(C4_UNLIKELY(rem.len && !rem.begins_with('#')))
+    {
+        err = "invalid tokens after directive";
+        goto directive_error; // NOLINT
+    }
+directive_error:
+    if(C4_UNLIKELY(err != nullptr))
+        _c4err(err);
 }
 
 template<class EventHandler>
@@ -7630,7 +7732,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         else if(first == '%')
         {
             _c4dbgpf("directive: {}", m_evt_handler->m_curr->line_contents.rem);
-            if(C4_UNLIKELY(!m_doc_empty && has_none(NDOC)))
+            if(C4_UNLIKELY(has_any(RDOC) || (!m_doc_empty && has_none(NDOC))))
                 _c4err("need document footer before directives");
             _handle_directive(m_evt_handler->m_curr->line_contents.rem);
             return;
@@ -7823,7 +7925,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     else if(first == '!')
     {
         csubstr tag = _scan_tag();
-        _c4dbgpf("runk: val tag! {}", _prs(tag));
+        _c4dbgpf("runk: val tag! {}", _prs(tag.str ? tag : csubstr("(arena full)")));
         // we need to buffer the tags, as there may be two
         // consecutive tags in here
         const size_t indentation = m_evt_handler->m_curr->line_contents.current_col(m_evt_handler->m_curr->line_contents.rem);

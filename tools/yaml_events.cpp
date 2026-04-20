@@ -105,6 +105,9 @@ The following options influence the behavior of testsuite_ints and ryml_ints:
          which requires two parses and two string copies of the
          original source buffer.
 
+    --no-resolve-tags,-nrt
+         do not resolve tags. Default is to resolve tags.
+
 EXAMPLES:
 
   $ ryml-yaml-events ts_src            # parse stdin to test suite events, then print the events
@@ -139,6 +142,7 @@ int estimate_ints_size(csubstr filecontents, int size);
 Callbacks create_custom_callbacks();
 
 
+bool resolve_tags = true;
 bool timing_enabled = false;
 double src_size = 0;
 namespace stdc = std::chrono;
@@ -280,7 +284,10 @@ extra::string emit_testsuite_events(csubstr filename, substr filecontents)
 {
     extra::EventHandlerTestSuite::EventSink sink = {};
     extra::EventHandlerTestSuite handler(&sink, create_custom_callbacks());
-    ParseEngine<extra::EventHandlerTestSuite> parser(&handler);
+    ParserOptions opts = {};
+    if(resolve_tags)
+        opts = opts.resolve_tags(true).resolve_tags_all(true);
+    ParseEngine<extra::EventHandlerTestSuite> parser(&handler, opts);
     {
         STOPWATCH("parse");
         parser.parse_in_place_ev(filename, filecontents);
@@ -292,8 +299,11 @@ csubstr parse_events_ints(csubstr filename, substr filecontents, std::string &pa
 {
     using I = extra::ievt::DataType;
     using Handler = extra::EventHandlerInts;
+    ParserOptions opts = {};
+    if(resolve_tags)
+        opts = opts.resolve_tags(true).resolve_tags_all(true);
     Handler handler(create_custom_callbacks());
-    ParseEngine<Handler> parser(&handler);
+    ParseEngine<Handler> parser(&handler, opts);
     substr src = filecontents;
     if(!fail_size)
     {
@@ -444,6 +454,10 @@ bool Args::parse(Args *args, int argc, const char *argv[], int *errcode)
         else if(arg == "--timings" || arg == "--timing" || arg == "-t")
         {
             timing_enabled = true;
+        }
+        else if(arg == "--no-resolve-tags" || arg == "-nrt")
+        {
+            resolve_tags = false;
         }
         else if(arg == "--ints-size-force" || arg == "-isf")
         {

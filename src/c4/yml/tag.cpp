@@ -45,6 +45,7 @@ csubstr normalize_tag_long(csubstr tag, substr output)
     csubstr result = normalize_tag_long(tag);
     if(result.begins_with("!!"))
     {
+        _RYML_CHECK_BASIC(!output.overlaps(tag));
         tag = tag.sub(2);
         const csubstr pfx = "<tag:yaml.org,2002:";
         const size_t len = pfx.len + tag.len + 1;
@@ -209,12 +210,11 @@ bool is_valid_tag_handle(csubstr handle)
 {
     if(handle.begins_with('!') && handle.ends_with('!'))
     {
-        _c4dbgpf("handle={}", _prs(handle));
+        _c4dbgpf("handle={}", _prs(handle, true));
         csubstr trimmed = handle.sub(1);
-        _c4dbgpf("trimmed0={}", _prs(trimmed, true));
         if(trimmed.ends_with('!'))
             trimmed = trimmed.offs(0, 1);
-        _c4dbgpf("trimmed1={}", _prs(trimmed, true));
+        _c4dbgpf("handle_trimmed={}", _prs(trimmed, true));
         // https://yaml.org/spec/1.2.2/#rule-ns-word-char
         for(char c : trimmed)
         {
@@ -233,25 +233,26 @@ bool is_valid_tag_handle(csubstr handle)
     return false;
 }
 
-void TagDirective::create(csubstr handle_, csubstr prefix_)
+size_t transform_tag(substr output, csubstr handle, csubstr prefix, csubstr tag,
+                     Callbacks const& callbacks, Location const& ymlloc,
+                     bool with_brackets)
 {
-    handle = handle_;
-    prefix = prefix_;
-    next_node_id = NONE;
-    _c4dbgpf("%TAG: handle={} prefix={}", handle, prefix);
-}
-
-size_t TagDirective::transform(csubstr tag, substr output, Callbacks const& callbacks, bool with_brackets) const
-{
-    _c4dbgpf("%TAG: handle={} prefix={} next_node={}. tag={}", handle, prefix, next_node_id, tag);
+    const char *errmsg = nullptr;
+    _c4dbgpf("%TAG: handle={} prefix='{}' tag={}", handle, prefix, tag);
     _RYML_ASSERT_BASIC_(callbacks, tag.len >= handle.len);
+    _RYML_ASSERT_BASIC_(callbacks, prefix.len > 0);
+    _RYML_ASSERT_BASIC_(callbacks, !output.overlaps(tag));
     csubstr rest = tag.sub(handle.len);
-    _c4dbgpf("%TAG: rest={}", rest);
+    size_t len, numpc;
+    _c4dbgpf("%TAG: rest={}", _prs(rest));
     if(rest.begins_with('<'))
     {
         _c4dbgpf("%TAG: begins with <. rest={}", rest);
         if(C4_UNLIKELY(!rest.ends_with('>')))
-            _RYML_ERR_BASIC_(callbacks, "malformed tag");
+        {
+            errmsg = "malformed tag";
+            goto err;
+        }
         rest = rest.offs(1, 1);
         if(rest.begins_with(prefix))
         {
@@ -259,10 +260,11 @@ size_t TagDirective::transform(csubstr tag, substr output, Callbacks const& call
             return 0; // return 0 to signal that the tag is local and cannot be resolved
         }
     }
-    size_t len = prefix.len + rest.len;
+    len = prefix.len + rest.len;
     if(with_brackets)
         len += 2;
-    size_t numpc = rest.count('%');
+    numpc = rest.count('%');
+    _c4dbgpf("%TAG: numpc={} output.len={} len={} prefix.len={} rest.len={}", numpc, output.len, len, prefix.len, rest.len);
     if(numpc == 0)
     {
         if(len <= output.len)
@@ -271,27 +273,33 @@ size_t TagDirective::transform(csubstr tag, substr output, Callbacks const& call
             {
                 output.str[0] = '<';
                 memcpy(1u + output.str, prefix.str, prefix.len);
-                memcpy(1u + output.str + prefix.len, rest.str, rest.len);
+                if(rest.len)
+                    memcpy(1u + output.str + prefix.len, rest.str, rest.len);
                 output.str[1u + prefix.len + rest.len] = '>';
             }
             else
             {
                 memcpy(output.str, prefix.str, prefix.len);
-                memcpy(output.str + prefix.len, rest.str, rest.len);
+                if(rest.len)
+                    memcpy(output.str + prefix.len, rest.str, rest.len);
             }
         }
     }
     else
     {
+        const char alphanum[] = "0123456789abcdefABCDEF";
         // need to decode URI % sequences
         size_t pos = rest.find('%');
         _RYML_ASSERT_BASIC_(callbacks, pos != npos);
         do {
-            size_t next = rest.first_not_of("0123456789abcdefABCDEF", pos+1);
+            size_t next = rest.first_not_of(alphanum, pos+1);
             if(next == npos)
                 next = rest.len;
-            _RYML_CHECK_BASIC_(callbacks, pos+1 < next);
-            _RYML_CHECK_BASIC_(callbacks, pos+1 + 2 <= next);
+            if(C4_UNLIKELY(pos+1 >= next || pos+1+2 > next))
+            {
+                errmsg = "tag error";
+                goto err;
+            }
             size_t delta = next - (pos+1);
             len -= delta;
             pos = rest.find('%', pos+1);
@@ -307,14 +315,20 @@ size_t TagDirective::transform(csubstr tag, substr output, Callbacks const& call
             pos = rest.find('%');
             _RYML_ASSERT_BASIC_(callbacks, pos != npos);
             do {
-                size_t next = rest.first_not_of("0123456789abcdefABCDEF", pos+1);
+                size_t next = rest.first_not_of(alphanum, pos+1);
                 if(next == npos)
                     next = rest.len;
-                _RYML_CHECK_BASIC_(callbacks, pos+1 < next);
-                _RYML_CHECK_BASIC_(callbacks, pos+1 + 2 <= next);
+                if(C4_UNLIKELY(pos+1 >= next || pos+1+2 > next))
+                {
+                    errmsg = "tag error";
+                    goto err;
+                }
                 uint8_t val;
                 if(C4_UNLIKELY(!read_hex(rest.range(pos+1, next), &val) || val > 127))
-                    _RYML_ERR_BASIC_(callbacks, "invalid URI character");
+                {
+                    errmsg = "invalid URI character";
+                    goto err;
+                }
                 appendstr(rest.range(prev, pos));
                 appendchar(static_cast<char>(val));
                 prev = next;
@@ -330,6 +344,181 @@ size_t TagDirective::transform(csubstr tag, substr output, Callbacks const& call
         }
     }
     return len;
+err:
+    if(ymlloc)
+    {
+        _RYML_ERR_PARSE_(callbacks, ymlloc, errmsg);
+    }
+    else
+    {
+        _RYML_ERR_BASIC_(callbacks, errmsg);
+    }
+    return 0; // LCOV_EXCL_LINE
+}
+
+
+//-----------------------------------------------------------------------------
+
+id_type TagDirectives::size() const noexcept
+{
+    // this assumes we have a very small number of tag directives
+    id_type i = 0;
+    for(; i < RYML_MAX_TAG_DIRECTIVES; ++i)
+        if(m_directives[i].handle.empty())
+            break;
+    return i;
+}
+
+TagDirective const* TagDirectives::add(csubstr handle, csubstr prefix, id_type doc_id) noexcept
+{
+    id_type pos = size();
+    TagDirective *C4_RESTRICT td = nullptr;
+    if(pos < RYML_MAX_TAG_DIRECTIVES)
+    {
+        td = &m_directives[pos];
+        td->handle = handle;
+        td->prefix = prefix;
+        td->doc_id = doc_id;
+        _c4dbgpf("tagd[{}]: added! handle={} prefix={} doc={}", pos, td->handle, td->prefix, td->doc_id);
+    }
+    return td;
+}
+
+void TagDirectives::clear() noexcept
+{
+    for(TagDirective &td : m_directives)
+    {
+        td.handle = {};
+        td.prefix = {};
+        td.doc_id = NONE;
+    }
+}
+
+TagDirectiveRange TagDirectives::lookup_range(id_type doc_id) const noexcept
+{
+    TagDirective const* first = nullptr;
+    TagDirective const* last = nullptr;
+    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
+    {
+        TagDirective const& C4_RESTRICT td = m_directives[i];
+        if(doc_id == td.doc_id)
+        {
+            first = m_directives + i;
+            break;
+        }
+        else if(td.handle.empty())
+        {
+            break;
+        }
+    }
+    if(first)
+    {
+        last = m_directives + RYML_MAX_TAG_DIRECTIVES;
+        for(TagDirective const* C4_RESTRICT td = first; td < last; ++td)
+        {
+            if(doc_id != td->doc_id || td->handle.empty())
+            {
+                last = td;
+                break;
+            }
+        }
+    }
+    else
+    {
+        first = last = m_directives;
+    }
+    return TagDirectiveRange{first, last};
+}
+
+TagDirective const* TagDirectives::lookup(csubstr tag, id_type doc_id) const noexcept
+{
+    _c4dbgpf("tagd: searching for {}, doc_id={}", _prs(tag), doc_id);
+    for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
+    {
+        TagDirective const& C4_RESTRICT td = m_directives[i];
+        if(td.handle.empty())
+        {
+            continue;
+        }
+        _c4dbgpf("tagd[{}]: handle={} prefix={} doc_id={}", i, td.handle, td.prefix, td.doc_id);
+        if(tag.begins_with(td.handle))
+        {
+            if(td.handle == '!' && (
+                   tag.begins_with("!!")
+                   || tag.begins_with('<')
+                   || tag.begins_with("!<")
+                   || is_custom_tag(tag)))
+                continue;
+            _c4dbgpf("tagd[{}]: matches handle!", i);
+            if(doc_id == td.doc_id)
+            {
+                _c4dbgpf("tagd[{}]: matches doc={}!", i, doc_id);
+                return &td;
+            }
+        }
+    }
+    return nullptr;
+}
+
+csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type id, Location const& ymlloc, Callbacks const& callbacks) const
+{
+    _RYML_ASSERT_BASIC_(callbacks, !buf.overlaps(tag));
+    TagDirective const* C4_RESTRICT td = lookup(tag, id);
+    *bufsz = 0;
+    csubstr handle, prefix;
+    if(td)
+    {
+        handle = td->handle;
+        prefix = td->prefix;
+    }
+    else
+    {
+        _c4dbgp("tagd: no directive found");
+        if(tag.begins_with('<'))
+        {
+            _c4dbgp("tagd: already resolved");
+            if(C4_UNLIKELY(!tag.ends_with('>')))
+                _RYML_ERR_PARSE_(callbacks, ymlloc, "malformed tag");
+            return tag;
+        }
+        else if(tag.begins_with("!!"))
+        {
+            _c4dbgp("tagd: !!");
+            //YamlTag_e tagenum = to_tag(tag);
+            //if(tagenum != TAG_NONE)
+            //{
+            //    _c4dbgpf("tagd: standard tag: {} -> {}", tag, from_tag_long(tagenum));
+            //    return from_tag_long(tagenum);
+            //}
+            handle = "!!";
+            prefix = "tag:yaml.org,2002:";
+        }
+        else if(C4_UNLIKELY(is_custom_tag(tag)))
+        {
+            _c4dbgp("tagd: custom_tag");
+            _RYML_ERR_PARSE_(callbacks, ymlloc, "tag '{}' at id={}: no matching directive was found", tag, id);
+        }
+        else
+        {
+            _c4dbgp("tagd: !");
+            handle = prefix = "!";
+        }
+    }
+    size_t len = transform_tag(buf, handle, prefix, tag, callbacks, ymlloc, /*with_brackets*/true);
+    if(len == 0)
+        return tag;
+    *bufsz = len;
+    if(len <= buf.len)
+        return buf.first(len);
+    else
+    {
+        _c4dbgp("tagd: not enough room");
+        csubstr ret;
+        ret.str = nullptr;
+        ret.len = len;
+        return ret;
+    }
+    return tag;
 }
 
 } // namespace yml

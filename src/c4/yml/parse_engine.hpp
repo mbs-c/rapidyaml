@@ -573,6 +573,9 @@ public:
     template<class FilterProcessor> void   _filter_block_folded_newlines_leading(FilterProcessor &C4_RESTRICT proc, size_t indentation, size_t len);
     template<class FilterProcessor> void   _filter_block_folded_indented_block(FilterProcessor &C4_RESTRICT proc, size_t indentation, size_t len, size_t curr_indentation) noexcept;
 
+    substr _alloc_arena(size_t len, substr *relocated=nullptr);
+    substr _alloc_arena(size_t len, csubstr *relocated) { return _alloc_arena(len, reinterpret_cast<substr*>(relocated)); } // NOLINT
+
     /** @endcond */
 
 private:
@@ -660,6 +663,7 @@ private:
     size_t _select_indentation_from_annotations(size_t val_indentation, size_t val_line);
     void _handle_keyref(csubstr alias);
     void _handle_valref(csubstr alias);
+    csubstr _resolve_tag(csubstr tag);
     void _handle_directive(csubstr rem);
     bool _validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const;
     bool _validate_directive_tag(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT handle, csubstr *C4_RESTRICT prefix) const;
@@ -684,6 +688,8 @@ private:
     Annotation m_pending_anchors;
     Annotation m_pending_tags;
 
+    bool m_has_directives_yaml;
+    bool m_has_directives;
     bool m_doc_empty;
     size_t m_prev_colon;
     size_t m_prev_val_end;
