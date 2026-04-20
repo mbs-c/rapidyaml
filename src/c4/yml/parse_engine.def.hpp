@@ -475,6 +475,7 @@ void ParseEngine<EventHandler>::_relocate_arena(csubstr prev_arena, substr next_
     #undef _ryml_relocate
 }
 
+/** @cond dev */
 template<class EventHandler>
 substr ParseEngine<EventHandler>::_alloc_arena(size_t len, substr *other)
 {
@@ -485,6 +486,7 @@ substr ParseEngine<EventHandler>::_alloc_arena(size_t len, substr *other)
         _relocate_arena(prev, curr, other);
     return out;
 }
+/** @endcond */
 
 
 //-----------------------------------------------------------------------------

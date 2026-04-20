@@ -406,8 +406,8 @@ public:
     C4_ALWAYS_INLINE bool resolve_tags() const noexcept { return (flags & RESOLVE_TAGS); }
 
     /** When resolve_tags() is enabled, resolve not just prefixed tags
-     * of the form `!handle!tag`, but also non-prefixed tags (`!!tag`
-     * and `!tag!`). Disabled by default. */
+     * of the form <pre>!handle!tag</pre>, but also non-prefixed tags
+     * (<pre>!!tag</pre> and <pre>!tag!</pre>). Disabled by default. */
     ParserOptions& resolve_tags_all(bool enabled) noexcept
     {
         return set_flags_(enabled, RESOLVE_TAGS_ALL);
