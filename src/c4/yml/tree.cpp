@@ -863,8 +863,6 @@ void Tree::set_root_as_stream()
     bool empty_root = ((type(root) & (SEQ|MAP|VAL)) == 0);
     for(TagDirective &C4_RESTRICT td : m_tag_directives)
     {
-        if(td.handle.empty())
-            break;
         if(td.doc_id >= m_cap || _p(td.doc_id)->m_parent == NONE)
         {
             _c4dbgpf("tagd[{}]: id={}->NONE", &td-m_tag_directives.m_directives, td.doc_id);
@@ -909,8 +907,6 @@ void Tree::set_root_as_stream()
     _p(root)->m_type = STREAM;
     for(TagDirective &C4_RESTRICT td : m_tag_directives)
     {
-        if(td.handle.empty())
-            break;
         id_type id = (td.doc_id != NONE) ? next_doc : (empty_root ? first_child(root) : m_free_head);
         _c4dbgpf("tagd[{}]: id={}->{}", &td-m_tag_directives.m_directives, td.doc_id, id);
         td.doc_id = id;

@@ -537,7 +537,7 @@ public:
         {
             nd = _p(node);
             if(nd->m_type.is_doc() || nd->m_parent == NONE)
-                return node;
+                break;
             node = nd->m_parent;
         } while(nd->m_parent != NONE);
         return node;

@@ -644,6 +644,38 @@ ENGINE_TEST(MapKeyBlock4Plain1_0,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
+ENGINE_TEST(MapKeyBlock4Plain1_0_tag,
+            HAS_CONTAINER_KEYS,
+            "\n"
+            "? !maptag\n"
+            "  foo : bar\n"
+            ": baz\n"
+            ,
+            "+STR\n"
+            "+DOC\n"
+            "+MAP\n"
+            "+MAP <!maptag>\n"
+            "=VAL :foo\n"
+            "=VAL :bar\n"
+            "-MAP\n"
+            "=VAL :baz\n"
+            "-MAP\n"
+            "-DOC\n"
+            "-STR\n")
+{
+    ___(ps.begin_stream());
+    ___(ps.begin_doc());
+    ___(ps.begin_map_val_block());
+    ___(ps.set_key_tag("!maptag"));
+    ___(ps.begin_map_key_block());
+    ___(ps.set_key_scalar_plain("foo"));
+    ___(ps.set_val_scalar_plain("bar"));
+    ___(ps.end_map_block());
+    ___(ps.set_val_scalar_plain("baz"));
+    ___(ps.end_map_block());
+    ___(ps.end_doc());
+    ___(ps.end_stream());
+}
 ENGINE_TEST(MapKeyBlock4Plain1_1,
             HAS_CONTAINER_KEYS,
             "\n"

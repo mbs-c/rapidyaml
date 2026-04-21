@@ -148,7 +148,7 @@ C4_NO_INLINE void _dump(DumpFn &&dumpfn, substr argbuf, csubstr fmt, Arg const& 
 {
     size_t pos = fmt.find("{}");
     if(pos == csubstr::npos)
-        return std::forward<DumpFn>(dumpfn)(fmt); // NOLINT
+        return std::forward<DumpFn>(dumpfn)(fmt); // NOLINT // LCOV_EXCL_LINE
     std::forward<DumpFn>(dumpfn)(fmt.first(pos)); // NOLINT
     std::forward<DumpFn>(dumpfn)(_to_chars_limited(argbuf, arg)); // NOLINT
     _dump(std::forward<DumpFn>(dumpfn), argbuf, fmt.sub(pos + 2), more...); // NOLINT

@@ -2,6 +2,7 @@
 
 - Narrow the scope of `%TAG` to only the following document, as per the standard ([PR#588](https://github.com/biojppm/rapidyaml/pull/588)). This required or prompted some API changes:
    - Added new type `TagDirectives`
+   - Added `ParseOptions::resolve_tags()` and `ParseOptions::resolve_tags_all()` options to enforce resolution of tags while parsing. When disabled (which is the default), the tree still has `Tree::resolve_tags()` to perform post-parsing or programmatic resolution.
    - Changed `TagDirective` to point at its in-scope document, changed API to reflect this.
    - `ParseEngine` now has an instance of `TagDirectives`, and is in charge of updating it and checking for directive errors.
    - Removed the old `TagDirective m_tag_directives[]` members from the ints and testsuite handlers. `Tree` also has its own `TagDirectives` member, redundantly updated during parsing: this enables programmatic manipulation the tree's tag directives .

@@ -74,7 +74,8 @@ TEST_P(EventsTest, from_tree)
     EventsCase const& ec = GetParam();
     printf("%s:%d: %s\n", ec.file, ec.line, ec.name.str);
     RYML_TRACE_FMT("defined in:\n{}:{}: {}", ec.file, ec.line, ec.name);
-    const Tree tree = parse_in_arena(to_csubstr(ec.src));
+    ParserOptions opts = ParserOptions{}.resolve_tags(true).resolve_tags_all(true);
+    const Tree tree = parse_in_arena(to_csubstr(ec.src), opts);
     _c4dbg_tree("parsed tree", tree);
     const std::string expected(ec.expected_events_from_tree.str, ec.expected_events_from_tree.len);
     const std::string actual = emit_events_from_tree<std::string>(tree);
