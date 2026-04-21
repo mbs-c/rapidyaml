@@ -93,7 +93,6 @@ YamlTag_e to_tag(csubstr tag)
             tag = tag.offs(0, 1);
         }
     }
-
     if(tag == "map")
         return TAG_MAP;
     else if(tag == "omap")
@@ -485,12 +484,12 @@ csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type i
         else if(tag.begins_with("!!"))
         {
             _c4dbgp("tagd: !!");
-            //YamlTag_e tagenum = to_tag(tag);
-            //if(tagenum != TAG_NONE)
-            //{
-            //    _c4dbgpf("tagd: standard tag: {} -> {}", tag, from_tag_long(tagenum));
-            //    return from_tag_long(tagenum);
-            //}
+            YamlTag_e tagenum = to_tag(tag);
+            if(tagenum != TAG_NONE)
+            {
+                _c4dbgpf("tagd: standard tag: {} -> {}", tag, from_tag_long(tagenum));
+                return from_tag_long(tagenum);
+            }
             handle = "!!";
             prefix = "tag:yaml.org,2002:";
         }

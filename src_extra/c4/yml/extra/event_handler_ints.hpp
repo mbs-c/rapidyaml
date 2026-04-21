@@ -1059,10 +1059,7 @@ private:
     /** @cond dev*/
     #define _add_scalar_(i, scalar)                                     \
     _c4dbgpf("{}/{}: scalar!", i, m_evt_size);                          \
-    _RYML_ASSERT_BASIC_(m_stack.m_callbacks,                            \
-                        scalar.is_sub(m_src)                            \
-                        || scalar.is_sub(m_arena)                       \
-                        || (scalar.str == nullptr));                    \
+    _RYML_ASSERT_BASIC_(m_stack.m_callbacks, _is_sub_(scalar));         \
     _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_evt[i] & ievt::WSTR);    \
     _RYML_ASSERT_BASIC_(m_stack.m_callbacks, i + 3 < m_evt_size);       \
     if(C4_LIKELY(scalar.is_sub(m_src)))                                 \
@@ -1141,13 +1138,13 @@ public:
     {
         _c4dbgpf("{}/{}: set key tag [{}]~~~{}~~~", m_evt_pos, m_evt_size, tag.len, tag.str ? tag : csubstr("(arena full)"));
         _enable_(c4::yml::KEYTAG);
-        _send_str_(tag, ievt::KEY_|ievt::TAG_);
+        _send_tag_(tag, ievt::KEY_);
     }
     void set_val_tag(csubstr tag)
     {
         _c4dbgpf("{}/{}: set val tag [{}]~~~{}~~~", m_evt_pos, m_evt_size, tag.len, tag.str ? tag : csubstr("(arena full)"));
         _enable_(c4::yml::VALTAG);
-        _send_str_(tag, ievt::VAL_|ievt::TAG_);
+        _send_tag_(tag, ievt::VAL_);
     }
 
     /** @} */
@@ -1202,6 +1199,9 @@ public:
     /** @} */
 
 public:
+
+    /** @name implementation helpers */
+    /** @{ */
 
     /** push a new parent, add a child to the new parent, and set the
      * child as the current node */
@@ -1286,6 +1286,21 @@ public:
         m_evt_prev = m_evt_pos;
         m_evt_pos += 3;
     }
+
+    void _send_tag_(csubstr tag, ievt::EventFlags flags)
+    {
+        if(C4_UNLIKELY(!_is_sub_(tag)))
+        {
+            _c4dbgpf("{}/{}: tag not in src/arena. copying.", m_evt_pos, m_evt_size);
+            substr copy = alloc_arena(tag.len);
+            if(tag.len && copy.str)
+                memcpy(copy.str, tag.str, tag.len);
+            tag = copy;
+        }
+        _send_str_(tag, flags|ievt::TAG_);
+    }
+
+    /** @} */
 
 #undef _enable_
 #undef _disable_
