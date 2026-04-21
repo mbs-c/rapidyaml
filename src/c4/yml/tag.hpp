@@ -93,7 +93,7 @@ struct RYML_EXPORT TagDirectives
      *
      * @note the return value may actually be not a substring of the
      * input buffer. */
-    csubstr resolve(substr buf, size_t *bufsz, csubstr tag, id_type doc_id, Location const& ymlloc, Callbacks const& callbacks) const;
+    csubstr resolve(substr buf, size_t *bufsz, csubstr tag, id_type doc_id, Location const& ymlloc, Callbacks const& callbacks, bool with_brackets=true) const;
 };
 
 /** returns the length of the transformed tag, or 0 to signal that the

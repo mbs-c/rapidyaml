@@ -234,117 +234,103 @@ bool is_valid_tag_handle(csubstr handle)
     return false;
 }
 
+namespace {
+bool is_valid_tag_char(char c)
+{
+    // https://yaml.org/spec/1.2.2/#691-node-tags
+    bool ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    if(!ok)
+    {
+        switch(c)
+        {
+        case '-':
+        case '#':
+        case ';':
+        case '/':
+        case '?':
+        case ':':
+        case '@':
+        case '&':
+        case '=':
+        case '+':
+        case '$':
+        case '_':
+        case '.':
+        case '~':
+        case '*':
+        case '\'':
+        case '(':
+        case ')':
+        case '%':
+            break;
+        default:
+            return false;
+        }
+    }
+    return true;
+}
+bool read_hex_char(csubstr suffix, size_t pos, char *out)
+{
+    // must be succeeded by 2 hex digits
+    if(pos + 3 > suffix.len)
+        return false;
+    suffix = suffix.range(pos + 1, pos + 3);
+    uint8_t val = 0;
+    if(C4_UNLIKELY(!read_hex(suffix, &val) || val > 127))
+        return false;
+    *out = static_cast<char>(val);
+    return true;
+}
+} // namespace
+
+
 size_t transform_tag(substr output, csubstr handle, csubstr prefix, csubstr tag,
                      Callbacks const& callbacks, Location const& ymlloc,
                      bool with_brackets)
 {
-    const char *errmsg = nullptr;
-    _c4dbgpf("%TAG: handle={} prefix='{}' tag={}", handle, prefix, tag);
     _RYML_ASSERT_BASIC_(callbacks, tag.len >= handle.len);
-    _RYML_ASSERT_BASIC_(callbacks, prefix.len > 0);
     _RYML_ASSERT_BASIC_(callbacks, !output.overlaps(tag));
+    _RYML_ASSERT_BASIC_(callbacks, prefix.len > 0);
     csubstr rest = tag.sub(handle.len);
-    size_t len, numpc;
     _c4dbgpf("%TAG: rest={}", _prs(rest));
-    if(rest.begins_with('<'))
-    {
-        _c4dbgpf("%TAG: begins with <. rest={}", rest);
-        if(C4_UNLIKELY(!rest.ends_with('>')))
-        {
-            errmsg = "malformed tag";
-            goto err; // NOLINT
-        }
-        rest = rest.offs(1, 1);
-        if(rest.begins_with(prefix))
-        {
-            _c4dbgpf("%TAG: already transformed! actual={}", rest.sub(prefix.len));
-            return 0; // return 0 to signal that the tag is local and cannot be resolved
-        }
-    }
-    len = prefix.len + rest.len;
+    size_t rpos = 0, wpos = 0;
+    auto appendstr = [&](csubstr s) {
+        if(s.len && wpos + s.len <= output.len)
+            memcpy(output.str + wpos, s.str, s.len);
+        wpos += s.len;
+    };
+    auto appendchar = [&](char c) {
+        if(wpos < output.len)
+            output.str[wpos] = c;
+        ++wpos;
+    };
     if(with_brackets)
-        len += 2;
-    numpc = rest.count('%');
-    _c4dbgpf("%TAG: numpc={} output.len={} len={} prefix.len={} rest.len={}", numpc, output.len, len, prefix.len, rest.len);
-    if(numpc == 0)
+        appendchar('<');
+    appendstr(prefix);
+    const char *errmsg = nullptr;
+    for(size_t pos = 0; pos < rest.len; ++pos)
     {
-        if(len <= output.len)
+        char c = rest.str[pos];
+        if(C4_LIKELY(is_valid_tag_char(c)))
         {
-            if(with_brackets)
+            if(c != '%')
+                continue;
+            else if(read_hex_char(rest, pos, &c))
             {
-                output.str[0] = '<';
-                memcpy(1u + output.str, prefix.str, prefix.len);
-                if(rest.len)
-                    memcpy(1u + output.str + prefix.len, rest.str, rest.len);
-                output.str[1u + prefix.len + rest.len] = '>';
-            }
-            else
-            {
-                memcpy(output.str, prefix.str, prefix.len);
-                if(rest.len)
-                    memcpy(output.str + prefix.len, rest.str, rest.len);
+                appendstr(rest.range(rpos, pos));
+                appendchar(c);
+                pos += 2;
+                rpos = pos + 1;
+                continue;
             }
         }
+        errmsg = "invalid tag";
+        goto err; // NOLINT
     }
-    else
-    {
-        const char alphanum[] = "0123456789abcdefABCDEF";
-        // need to decode URI % sequences
-        size_t pos = rest.find('%');
-        _RYML_ASSERT_BASIC_(callbacks, pos != npos);
-        do {
-            size_t next = rest.first_not_of(alphanum, pos+1);
-            if(next == npos)
-                next = rest.len;
-            if(C4_UNLIKELY(pos+1 >= next || pos+1+2 > next))
-            {
-                errmsg = "tag error";
-                goto err; // NOLINT
-            }
-            size_t delta = next - (pos+1);
-            len -= delta;
-            pos = rest.find('%', pos+1);
-        } while(pos != npos);
-        if(len <= output.len)
-        {
-            size_t prev = 0, wpos = 0;
-            auto appendstr = [&](csubstr s) { memcpy(output.str + wpos, s.str, s.len); wpos += s.len; };
-            auto appendchar = [&](char c) { output.str[wpos++] = c; };
-            if(with_brackets)
-                appendchar('<');
-            appendstr(prefix);
-            pos = rest.find('%');
-            _RYML_ASSERT_BASIC_(callbacks, pos != npos);
-            do {
-                size_t next = rest.first_not_of(alphanum, pos+1);
-                if(next == npos)
-                    next = rest.len;
-                if(C4_UNLIKELY(pos+1 >= next || pos+1+2 > next))
-                {
-                    errmsg = "tag error";
-                    goto err; // NOLINT
-                }
-                uint8_t val;
-                if(C4_UNLIKELY(!read_hex(rest.range(pos+1, next), &val) || val > 127))
-                {
-                    errmsg = "invalid URI character";
-                    goto err; // NOLINT
-                }
-                appendstr(rest.range(prev, pos));
-                appendchar(static_cast<char>(val));
-                prev = next;
-                pos = rest.find('%', pos+1);
-            } while(pos != npos);
-            _RYML_ASSERT_BASIC_(callbacks, pos == npos);
-            _RYML_ASSERT_BASIC_(callbacks, prev > 0);
-            _RYML_ASSERT_BASIC_(callbacks, rest.len >= prev);
-            appendstr(rest.sub(prev));
-            if(with_brackets)
-                appendchar('>');
-            _RYML_ASSERT_BASIC_(callbacks, wpos == len);
-        }
-    }
-    return len;
+    appendstr(rest.sub(rpos));
+    if(with_brackets)
+        appendchar('>');
+    return wpos;
 err:
     if(ymlloc)
     {
@@ -460,12 +446,14 @@ TagDirective const* TagDirectives::lookup(csubstr tag, id_type doc_id) const noe
     return nullptr;
 }
 
-csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type id, Location const& ymlloc, Callbacks const& callbacks) const
+csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type id, Location const& ymlloc, Callbacks const& callbacks, bool with_brackets) const
 {
     _RYML_ASSERT_BASIC_(callbacks, !buf.overlaps(tag));
     TagDirective const* C4_RESTRICT td = lookup(tag, id);
     *bufsz = 0;
-    csubstr handle, prefix;
+    csubstr handle, prefix, ret;
+    const char *errmsg = nullptr;
+    size_t len;
     if(td)
     {
         handle = td->handle;
@@ -478,8 +466,21 @@ csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type i
         {
             _c4dbgp("tagd: already resolved");
             if(C4_UNLIKELY(!tag.ends_with('>')))
-                _RYML_ERR_PARSE_(callbacks, ymlloc, "malformed tag");
+            {
+                errmsg = "malformed tag";
+                goto err; // NOLINT
+            }
             return tag;
+        }
+        else if(tag.begins_with("!<"))
+        {
+            _c4dbgp("tagd: already resolved");
+            if(C4_UNLIKELY(!tag.ends_with('>')))
+            {
+                errmsg = "malformed tag";
+                goto err; // NOLINT
+            }
+            return tag.sub(1);
         }
         else if(tag.begins_with("!!"))
         {
@@ -488,7 +489,8 @@ csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type i
             if(tagenum != TAG_NONE)
             {
                 _c4dbgpf("tagd: standard tag: {} -> {}", tag, from_tag_long(tagenum));
-                return from_tag_long(tagenum);
+                tag = from_tag_long(tagenum);
+                return with_brackets ? tag : tag.offs(1, 1);
             }
             handle = "!!";
             prefix = "tag:yaml.org,2002:";
@@ -496,7 +498,9 @@ csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type i
         else if(C4_UNLIKELY(is_custom_tag(tag)))
         {
             _c4dbgp("tagd: custom_tag");
-            _RYML_ERR_PARSE_(callbacks, ymlloc, "tag '{}' at id={}: no matching directive was found", tag, id);
+            _c4dbgpf("tag '{}' at id={}: no matching directive was found", tag, id);
+            errmsg = "tag without matching directive";
+            goto err; // NOLINT
         }
         else
         {
@@ -504,17 +508,28 @@ csubstr TagDirectives::resolve(substr buf, size_t *bufsz, csubstr tag, id_type i
             handle = prefix = "!";
         }
     }
-    size_t len = transform_tag(buf, handle, prefix, tag, callbacks, ymlloc, /*with_brackets*/true);
-    if(len == 0)
-        return tag;
+    len = transform_tag(buf, handle, prefix, tag, callbacks, ymlloc, with_brackets);
     *bufsz = len;
     if(len <= buf.len)
-        return buf.first(len);
-    _c4dbgp("tagd: not enough room");
-    csubstr ret;
-    ret.str = nullptr;
-    ret.len = len;
+    {
+        ret = buf.first(len);
+    }
+    else
+    {
+        _c4dbgp("tagd: not enough room");
+        ret.str = nullptr;
+        ret.len = len;
+    }
     return ret;
+err:
+    if(ymlloc)
+    {
+        _RYML_ERR_PARSE_(callbacks, ymlloc, errmsg);
+    }
+    else
+    {
+        _RYML_ERR_BASIC_(callbacks, errmsg);
+    }
 }
 
 } // namespace yml
