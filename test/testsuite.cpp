@@ -148,6 +148,7 @@ struct TestSequenceLevel
     std::string         src_evts;
     std::string         src_evts_ints;
     std::string         arena_evts_ints;
+    ParserOptions       parser_options;
     EventHandlerTree    evt_handler_tree;
     EventHandlerTree    evt_handler_tree_json;
     Parser              parser_tree;
@@ -176,15 +177,16 @@ struct TestSequenceLevel
     bool events_ints_were_generated = false;
 
     TestSequenceLevel()
-        : evt_handler_tree()
+        : parser_options(ParserOptions{}.resolve_tags(true).resolve_tags_all(true))
+        , evt_handler_tree()
         , evt_handler_tree_json()
-        , parser_tree(&evt_handler_tree)
-        , parser_tree_json(&evt_handler_tree_json)
+        , parser_tree(&evt_handler_tree, parser_options)
+        , parser_tree_json(&evt_handler_tree_json, parser_options)
         , evt_str_sink()
         , evt_handler_str(&evt_str_sink)
-        , parser_str(&evt_handler_str)
+        , parser_str(&evt_handler_str, parser_options)
         , evt_handler_ints()
-        , parser_ints(&evt_handler_ints)
+        , parser_ints(&evt_handler_ints, parser_options)
         , buffer_ints()
     {
     }
@@ -264,9 +266,9 @@ struct TestSequenceLevel
         else
         {
             if(immutable)
-                tree_parsed_from_src = parse_in_arena(filename, c4::to_csubstr(src_tree));
+                tree_parsed_from_src = parse_in_arena(filename, c4::to_csubstr(src_tree), parser_options);
             else
-                tree_parsed_from_src = parse_in_place(filename, c4::to_substr(src_tree));
+                tree_parsed_from_src = parse_in_place(filename, c4::to_substr(src_tree), parser_options);
         }
         _nfo_print_tree("PARSED", tree_parsed_from_src);
         if(tree_parsed_from_src.num_tag_directives())
@@ -303,11 +305,11 @@ struct TestSequenceLevel
         {
             if(immutable)
             {
-                tree_parsed_from_src_json = parse_json_in_arena(filename, c4::to_csubstr(src_tree_json));
+                tree_parsed_from_src_json = parse_json_in_arena(filename, c4::to_csubstr(src_tree_json), parser_options);
             }
             else
             {
-                tree_parsed_from_src_json = parse_json_in_place(filename, c4::to_substr(src_tree_json));
+                tree_parsed_from_src_json = parse_json_in_place(filename, c4::to_substr(src_tree_json), parser_options);
             }
         }
         _nfo_print_tree("PARSED", tree_parsed_from_src_json);
@@ -465,8 +467,8 @@ struct TestSequenceLevel
         if(this->emitted_from_tree_parsed_from_src != that.emitted_from_tree_parsed_from_src)
         {
             // workaround for lack of idempotency in tag normalization.
-            Tree from_prev = parse_in_arena(to_csubstr(that.emitted_from_tree_parsed_from_src));
-            Tree from_this = parse_in_arena(to_csubstr(emitted_from_tree_parsed_from_src));
+            Tree from_prev = parse_in_arena(to_csubstr(that.emitted_from_tree_parsed_from_src), parser_options);
+            Tree from_this = parse_in_arena(to_csubstr(emitted_from_tree_parsed_from_src), parser_options);
             from_prev.resolve_tags();
             from_this.resolve_tags();
             test_compare(from_prev, from_this);

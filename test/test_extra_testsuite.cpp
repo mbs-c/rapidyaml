@@ -53,11 +53,12 @@ class EventsTest : public testing::TestWithParam<EventsCase> {};
 TEST_P(EventsTest, from_parser)
 {
     EventsCase const& ec = GetParam();
-    printf("%s:%d: %s", ec.file, ec.line, ec.name.str);
+    printf("%s:%d: %s\n", ec.file, ec.line, ec.name.str);
     RYML_TRACE_FMT("defined in:\n{}:{}: {}", ec.file, ec.line, ec.name);
     extra::EventHandlerTestSuite::EventSink sink;
     extra::EventHandlerTestSuite handler(&sink);
-    ParseEngine<extra::EventHandlerTestSuite> parser(&handler);
+    ParserOptions opts = ParserOptions{}.resolve_tags(true).resolve_tags_all(true);
+    ParseEngine<extra::EventHandlerTestSuite> parser(&handler, opts);
     std::string src_copy(ec.src.str, ec.src.len);
     parser.parse_in_place_ev("(testyaml)", to_substr(src_copy));
     csubstr result = sink;
@@ -71,9 +72,10 @@ TEST_P(EventsTest, from_parser)
 TEST_P(EventsTest, from_tree)
 {
     EventsCase const& ec = GetParam();
-    printf("%s:%d: %s", ec.file, ec.line, ec.name.str);
+    printf("%s:%d: %s\n", ec.file, ec.line, ec.name.str);
     RYML_TRACE_FMT("defined in:\n{}:{}: {}", ec.file, ec.line, ec.name);
-    const Tree tree = parse_in_arena(to_csubstr(ec.src));
+    ParserOptions opts = ParserOptions{}.resolve_tags(true).resolve_tags_all(true);
+    const Tree tree = parse_in_arena(to_csubstr(ec.src), opts);
     _c4dbg_tree("parsed tree", tree);
     const std::string expected(ec.expected_events_from_tree.str, ec.expected_events_from_tree.len);
     const std::string actual = emit_events_from_tree<std::string>(tree);
@@ -277,8 +279,9 @@ const EventsCase events_cases[] = {
         "-STR\n"
         ),
     //=======================================================
-    _ec("tag_directives_wtf",
-        "!!foo fluorescent",
+    _ec("tag_directives_foo",
+        "!!foo fluorescent"
+        ,
         "+STR\n"
         "+DOC\n"
         "=VAL <tag:yaml.org,2002:foo> :fluorescent\n"
@@ -291,7 +294,8 @@ const EventsCase events_cases[] = {
         "---\n"
         "- !local foo\n"
         "- !!str bar\n"
-        "- !e!tag%21 baz\n",
+        "- !e!tag%21 baz\n"
+        ,
         "+STR\n"
         "+DOC ---\n"
         "+SEQ\n"
@@ -322,7 +326,8 @@ const EventsCase events_cases[] = {
         "# Global\n"
         "%TAG ! tag:example.com,2000:app/\n"
         "---\n"
-        "!foo \"bar\"\n",
+        "!foo \"bar\"\n"
+        ,
         "+STR\n"
         "+DOC ---\n"
         "=VAL <!foo> \"bar\n"
@@ -340,8 +345,8 @@ const EventsCase events_cases[] = {
         "-DOC\n"
         "-STR\n"),
     //=======================================================
-    _ec("tag_directives_9WXW",
-        "\n"
+    _ec("tag_directives_9WXW"
+        ,
         "# Private\n"
         "#---   # note this is commented out\n"
         "!foo \"bar\"\n"
@@ -349,7 +354,8 @@ const EventsCase events_cases[] = {
         "# Global\n"
         "%TAG ! tag:example.com,2000:app/\n"
         "---\n"
-        "!foo \"bar\"\n",
+        "!foo \"bar\"\n"
+        ,
         "+STR\n"
         "+DOC\n"
         "=VAL <!foo> \"bar\n"
@@ -357,7 +363,8 @@ const EventsCase events_cases[] = {
         "+DOC ---\n"
         "=VAL <tag:example.com,2000:app/foo> \"bar\n"
         "-DOC\n"
-        "-STR\n",
+        "-STR\n"
+        ,
         "+STR\n"
         "+DOC ---\n"
         "=VAL <!foo> \"bar\n"

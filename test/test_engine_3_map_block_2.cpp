@@ -573,77 +573,77 @@ ENGINE_TEST(ContainerKey3Block4_C2SP_0, HAS_CONTAINER_KEYS,
     ___(ps.end_stream());
 }
 
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0_scalar_plain, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0_scalar_plain, HAS_CONTAINER_KEYS,
                     Location(2,8),
                     "multiline\n"
                     " scalar: 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0_scalar_squo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0_scalar_squo, HAS_CONTAINER_KEYS,
                     Location(2,11),
                     "'multiline\n"
                     " scalar': 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0_scalar_dquo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0_scalar_dquo, HAS_CONTAINER_KEYS,
                     Location(2,11),
                     "\"multiline\n"
                     " scalar\": 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_0, HAS_CONTAINER_KEYS,
                     Location(2,4),
                     "[23\n"
                     "]: 42\n"
                     "")
 
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1_scalar_plain, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1_scalar_plain, HAS_CONTAINER_KEYS,
                     Location(4,8),
                     "[21]: 42\n"
                     "[22]: 42\n"
                     "multiline\n"
                     " scalar: 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1_scalar_squo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1_scalar_squo, HAS_CONTAINER_KEYS,
                     Location(4,1),
                     "[21]: 42\n"
                     "[22]: 42\n"
                     "'multiline\n"
                     " scalar': 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1_scalar_dquo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1_scalar_dquo, HAS_CONTAINER_KEYS,
                     Location(4,1),
                     "[21]: 42\n"
                     "[22]: 42\n"
                     "\"multiline\n"
                     " scalar\": 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_1, HAS_CONTAINER_KEYS,
                     Location(3,2),
                     "[21]: 42\n"
                     "[23\n"
                     "]: 42\n"
                     "")
 
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2_scalar_plain, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2_scalar_plain, HAS_CONTAINER_KEYS,
                     Location(4,8),
                     "[21]: 42\n"
                     "[22]: 42\n"
                     "multiline\n"
                     " scalar: 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2_scalar_squo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2_scalar_squo, HAS_CONTAINER_KEYS,
                     Location(4,1),
                     "[21]: 42\n"
                     "[22]: 42\n"
                     "'multiline\n"
                     " scalar': 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2_scalar_dquo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2_scalar_dquo, HAS_CONTAINER_KEYS,
                     Location(4,1),
                     "[21]: 42\n"
                     "[22]: 42\n"
                     "\"multiline\n"
                     " scalar\": 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block4_C2SP_2, HAS_CONTAINER_KEYS,
                     Location(4,2),
                     "[21]: 42\n"
                     "[22]: 42\n"
@@ -691,59 +691,59 @@ ENGINE_TEST(ContainerKey3Block5_C2SP_0, HAS_CONTAINER_KEYS,
     ___(ps.end_stream());
 }
 
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_0, HAS_CONTAINER_KEYS,
                     Location(2,4),
                     "{c: d\n"
                     "}: 42\n"
                     "")
 
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1_scalar_plain, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1_scalar_plain, HAS_CONTAINER_KEYS,
                     Location(3,8),
                     "{a: b}: 42\n"
                     "multiline\n"
                     " scalar: 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1_scalar_squo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1_scalar_squo, HAS_CONTAINER_KEYS,
                     Location(3,1),
                     "{a: b}: 42\n"
                     "'multiline\n"
                     " scalar': 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1_scalar_dquo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1_scalar_dquo, HAS_CONTAINER_KEYS,
                     Location(3,1),
                     "{a: b}: 42\n"
                     "\"multiline\n"
                     " scalar\": 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_1, HAS_CONTAINER_KEYS,
                     Location(3,2),
                     "{a: b}: 42\n"
                     "{c: d\n"
                     "}: 42\n"
                     "")
 
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2_scalar_plain, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2_scalar_plain, HAS_CONTAINER_KEYS,
                     Location(4,8),
                     "{a: b}: 42\n"
                     "{c: d}: 42\n"
                     "multiline\n"
                     " scalar: 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2_scalar_squo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2_scalar_squo, HAS_CONTAINER_KEYS,
                     Location(4,1),
                     "{a: b}: 42\n"
                     "{c: d}: 42\n"
                     "'multiline\n"
                     " scalar': 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2_scalar_dquo, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2_scalar_dquo, HAS_CONTAINER_KEYS,
                     Location(4,1),
                     "{a: b}: 42\n"
                     "{c: d}: 42\n"
                     "\"multiline\n"
                     " scalar\": 42\n"
                     "")
-ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(ContainerKey3Block5_C2SP_2, HAS_CONTAINER_KEYS,
                     Location(4,2),
                     "{a: b}: 42\n"
                     "{c: d}: 42\n"

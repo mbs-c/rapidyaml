@@ -210,7 +210,7 @@ struct FilterResult;
 struct FilterResultExtending;
 
 /** @cond dev */
-typedef enum BlockChomp_ {
+typedef enum BlockChomp_ { // NOLINT
     CHOMP_CLIP,    //!< single newline at end (default)
     CHOMP_STRIP,   //!< no newline at end     (-)
     CHOMP_KEEP     //!< all newlines from end (+)
@@ -336,10 +336,10 @@ public:
     Callbacks const& callbacks() const { _RYML_ASSERT_BASIC(m_evt_handler); return m_evt_handler->m_stack.m_callbacks; }
 
     /** Get the name of the latest file parsed by this object. */
-    csubstr filename() const { return m_file; }
+    csubstr filename() const { return m_evt_handler->m_curr ? m_evt_handler->m_curr->pos.name : csubstr{}; }
 
     /** Get the latest YAML buffer parsed by this object. */
-    csubstr source() const { return m_buf; }
+    csubstr source() const { return m_evt_handler ? m_evt_handler->m_src : csubstr{}; }
 
     /** Get the encoding of the latest YAML buffer parsed by this object.
      * If no encoding was specified, UTF8 is assumed as per the YAML standard. */
@@ -522,6 +522,7 @@ private:
     void  _start_doc_suddenly();
     void  _end_doc_suddenly();
     void  _end_doc_suddenly__pop();
+    void  _check_trailing_doc_token();
     void  _end_stream();
 
     void  _set_indentation(size_t indentation) noexcept;
@@ -573,6 +574,9 @@ public:
     template<class FilterProcessor> void   _filter_block_folded_newlines_leading(FilterProcessor &C4_RESTRICT proc, size_t indentation, size_t len);
     template<class FilterProcessor> void   _filter_block_folded_indented_block(FilterProcessor &C4_RESTRICT proc, size_t indentation, size_t len, size_t curr_indentation) noexcept;
 
+    substr _alloc_arena(size_t len, substr *relocated=nullptr);
+    substr _alloc_arena(size_t len, csubstr *relocated) { return _alloc_arena(len, reinterpret_cast<substr*>(relocated)); } // NOLINT
+
     /** @endcond */
 
 private:
@@ -587,10 +591,11 @@ private:
     void   _scan_line();
     substr _peek_next_line(size_t pos=npos) const;
 
-    void _relocate_arena(csubstr prev_arena, substr next_arena);
-    static void _s_relocate_arena(void*, csubstr prev_arena, substr next_arena);
+    void _relocate_arena(csubstr prev_arena, substr next_arena, substr *other_string=nullptr);
 
 private:
+
+    C4_ALWAYS_INLINE substr _buf() const noexcept { return m_evt_handler->m_src; }
 
     C4_ALWAYS_INLINE bool has_all(ParserFlag_t f) const noexcept { return (m_evt_handler->m_curr->flags & f) == f; }
     C4_ALWAYS_INLINE bool has_any(ParserFlag_t f) const noexcept { return (m_evt_handler->m_curr->flags & f) != 0; }
@@ -660,6 +665,7 @@ private:
     size_t _select_indentation_from_annotations(size_t val_indentation, size_t val_line);
     void _handle_keyref(csubstr alias);
     void _handle_valref(csubstr alias);
+    csubstr _resolve_tag(csubstr tag);
     void _handle_directive(csubstr rem);
     bool _validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const;
     bool _validate_directive_tag(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT handle, csubstr *C4_RESTRICT prefix) const;
@@ -669,9 +675,6 @@ private:
 private:
 
     ParserOptions m_options;
-
-    csubstr m_file;
-    substr  m_buf;
 
 public:
 
@@ -684,6 +687,8 @@ private:
     Annotation m_pending_anchors;
     Annotation m_pending_tags;
 
+    bool m_has_directives_yaml;
+    bool m_has_directives;
     bool m_doc_empty;
     size_t m_prev_colon;
     size_t m_prev_val_end;
@@ -699,7 +704,6 @@ private:
     size_t *m_newline_offsets;
     size_t  m_newline_offsets_size;
     size_t  m_newline_offsets_capacity;
-    csubstr m_newline_offsets_buf;
 
 public:
 

@@ -1,4 +1,21 @@
-- Fix parsing of **valid** YAML corner cases:
+## General fixes and improvements
+
+- Narrow the scope of `%TAG` to only the following document, as per the standard ([PR#588](https://github.com/biojppm/rapidyaml/pull/588)). This required or prompted some API changes:
+   - Added new type `TagDirectives`
+   - Added `ParseOptions::resolve_tags()` and `ParseOptions::resolve_tags_all()` options to enforce resolution of tags while parsing. When disabled (which is the default), the tree still has `Tree::resolve_tags()` to perform post-parsing or programmatic resolution.
+   - Changed `TagDirective` to point at its in-scope document, changed API to reflect this.
+   - `ParseEngine` now has an instance of `TagDirectives`, and is in charge of updating it and checking for directive errors.
+   - Removed the old `TagDirective m_tag_directives[]` members from the ints and testsuite handlers. `Tree` also has its own `TagDirectives` member, redundantly updated during parsing: this enables programmatic manipulation the tree's tag directives .
+   - The event handlers now track the current document id, in order to enable the document scope check for `%TAG` directives. This required adding node id tracking to the ints and testsuite handlers.
+   - Added `Tree::ancestor_doc(node_id)` and `ConstNodeRef::ancestor_doc()` to query for the parent document of a node. This is needed to implement resolution of tags.
+   - `NodeType`: rename TAGD->TAGH and TAGV->TAGP
+   - Internal changes to improve the design of event handlers, moving relocation and error checking logic to `ParseEngine`, where it is most suited.
+   - Fix warnings with clang-tidy 22
+
+
+## YAML fixes: valid cases
+
+Fix parsing of **valid** YAML corner cases:
   - Ensure tags/anchors are not omitted. This was happening in some flow maps ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)).
   - Ambiguity of tags/anchors in ? mode ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
@@ -38,8 +55,20 @@
     ? ? - c   # nested explicit keys were also fixed
       ? - d
     ```
------
-- Ensure parse errors for **invalid** YAML cases, and improve reported error location:
+
+
+## YAML fixes: invalid cases
+
+Ensure parse errors for **invalid** YAML cases, and improve reported error location:
+  - `%TAG` directives are valid only in the following document ([PR#588](https://github.com/biojppm/rapidyaml/pull/588)).
+    ```yaml
+    %TAG !m my-
+    --- !m!first a
+    --- !m!second a  # error: %TAG directive out of scope here
+    ...
+    %TAG !m your-
+    --- !m!second a  # ok: %TAG provided now.
+    ```
   - colon on newline at top level ([PR#585](https://github.com/biojppm/rapidyaml/pull/585)):
     ```yaml
     scalar
@@ -134,9 +163,12 @@
       - &anchor *ref
       - !tag *ref
     ```
-  - references with extra tokens ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
+  - directives with extra tokens ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
     %YAML 1.2 this is wrong
+    %YAML 1.2 # this is ok
+    %TAG ! my- ! this is also wrong
+    ---
     ```
   - multiline implicit keys are invalid ([PR#587](https://github.com/biojppm/rapidyaml/pull/587)):
     ```yaml
@@ -151,3 +183,4 @@
     {multiline:
         map}: invalid
    ```
+

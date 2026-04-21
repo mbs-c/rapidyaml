@@ -1091,7 +1091,7 @@ ENGINE_TEST(QmrkSameLineUnkSeq, HAS_CONTAINER_KEYS,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr0, HAS_CONTAINER_KEYS,
                     Location(5, 3),
                     "? - a\n"
                     "  - b\n"
@@ -1100,7 +1100,7 @@ ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr0, HAS_CONTAINER_KEYS, ExpectedErrorTyp
                     ": - a\n" // error here
                     "  - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr1, HAS_CONTAINER_KEYS,
                     Location(5, 4),
                     "? - a\n"
                     "  - b\n"
@@ -1109,12 +1109,12 @@ ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr1, HAS_CONTAINER_KEYS, ExpectedErrorTyp
                     "k: - a\n" // error here
                     "   - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr3, HAS_CONTAINER_KEYS,
                     Location(1, 3),
                     ": - a\n" // error here
                     "  - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr4, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkSeqErr4, HAS_CONTAINER_KEYS,
                     Location(1, 4),
                     "k: - a\n" // error here
                     "   - b\n"
@@ -1154,23 +1154,23 @@ ENGINE_TEST(QmrkSameLineUnkMap, HAS_CONTAINER_KEYS,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr0, HAS_CONTAINER_KEYS,
                     Location(3, 6), // FIXME
                     "? a: b\n"
                     ": c: d\n"
                     ": e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr1, HAS_CONTAINER_KEYS,
                     Location(3, 7), // FIXME
                     "? a: b\n"
                     ": c: d\n"
                     "k: e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr2, HAS_CONTAINER_KEYS,
                     Location(1, 6), // FIXME
                     ": e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineUnkMapErr3, HAS_CONTAINER_KEYS,
                     Location(1, 7),
                     "k: e: f\n" // error here
     )
@@ -1222,7 +1222,7 @@ ENGINE_TEST(QmrkSameLineMapSeq, HAS_CONTAINER_KEYS,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr0, HAS_CONTAINER_KEYS,
                     Location(6, 3),
                     "k: v\n"
                     "? - a\n"
@@ -1232,7 +1232,7 @@ ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr0, HAS_CONTAINER_KEYS, ExpectedErrorTyp
                     ": - a\n" // error here
                     "  - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr1, HAS_CONTAINER_KEYS,
                     Location(6, 4),
                     "k: v\n"
                     "? - a\n"
@@ -1242,13 +1242,13 @@ ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr1, HAS_CONTAINER_KEYS, ExpectedErrorTyp
                     "k: - a\n" // error here
                     "   - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr2, HAS_CONTAINER_KEYS,
                     Location(2, 3),
                     "k: v\n"
                     ": - a\n" // error here
                     "  - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapSeqErr3, HAS_CONTAINER_KEYS,
                     Location(2, 4),
                     "k: v\n"
                     "k: - a\n" // error here
@@ -1295,26 +1295,26 @@ ENGINE_TEST(QmrkSameLineMapMap, HAS_CONTAINER_KEYS,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr0, HAS_CONTAINER_KEYS,
                     Location(4, 6),
                     "k: v\n"
                     "? a: b\n"
                     ": c: d\n"
                     ": e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr1, HAS_CONTAINER_KEYS,
                     Location(4, 7), // FIXME
                     "k: v\n"
                     "? a: b\n"
                     ": c: d\n"
                     "k: e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr2, HAS_CONTAINER_KEYS,
                     Location(2, 6), // FIXME
                     "k: v\n"
                     ": e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineMapMapErr3, HAS_CONTAINER_KEYS,
                     Location(2, 7), // FIXME
                     "k: v\n"
                     "k: e: f\n" // error here
@@ -1365,7 +1365,7 @@ ENGINE_TEST(QmrkSameLineSeqSeq, HAS_CONTAINER_KEYS,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr0, HAS_CONTAINER_KEYS,
                     Location(5, 5), // FIXME
                     "- ? - a\n"
                     "    - b\n"
@@ -1374,7 +1374,7 @@ ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr0, HAS_CONTAINER_KEYS, ExpectedErrorTyp
                     "  : - a\n" // error here
                     "    - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr1, HAS_CONTAINER_KEYS,
                     Location(5, 6),
                     "- ? - a\n"
                     "    - b\n"
@@ -1383,12 +1383,12 @@ ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr1, HAS_CONTAINER_KEYS, ExpectedErrorTyp
                     "  k: - a\n" // error here
                     "     - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr2, HAS_CONTAINER_KEYS,
                     Location(1, 5),
                     "- : - a\n" // error here
                     "    - b\n"
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqSeqErr3, HAS_CONTAINER_KEYS,
                     Location(1, 6),
                     "- k: - a\n" // error here
                     "     - b\n"
@@ -1432,23 +1432,23 @@ ENGINE_TEST(QmrkSameLineSeqMap, HAS_CONTAINER_KEYS,
     ___(ps.end_doc());
     ___(ps.end_stream());
 }
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr0, HAS_CONTAINER_KEYS,
                     Location(3, 8), // FIXME
                     "- ? a: b\n"
                     "  : c: d\n"
                     "  : e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr1, HAS_CONTAINER_KEYS,
                     Location(3, 9),
                     "- ? a: b\n"
                     "  : c: d\n"
                     "  k: e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr2, HAS_CONTAINER_KEYS,
                     Location(1, 6), // FIXME
                     ": e: f\n" // error here
     )
-ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr3, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(QmrkSameLineSeqMapErr3, HAS_CONTAINER_KEYS,
                     Location(1, 7), // FIXME
                     "k: e: f\n" // error here
     )

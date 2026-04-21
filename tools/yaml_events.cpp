@@ -105,6 +105,9 @@ The following options influence the behavior of testsuite_ints and ryml_ints:
          which requires two parses and two string copies of the
          original source buffer.
 
+    --no-resolve-tags,-nrt
+         do not resolve tags. Default is to resolve tags.
+
 EXAMPLES:
 
   $ ryml-yaml-events ts_src            # parse stdin to test suite events, then print the events
@@ -139,6 +142,7 @@ int estimate_ints_size(csubstr filecontents, int size);
 Callbacks create_custom_callbacks();
 
 
+ParserOptions parse_opts = {};
 bool timing_enabled = false;
 double src_size = 0;
 namespace stdc = std::chrono;
@@ -267,7 +271,7 @@ std::string emit_testsuite_events_from_tree(csubstr filename, substr filecontent
     }
     {
         STOPWATCH("parse");
-        parse_in_place(filename, filecontents, &tree);
+        parse_in_place(filename, filecontents, &tree, parse_opts);
     }
     {
         STOPWATCH("emit_events");
@@ -280,7 +284,7 @@ extra::string emit_testsuite_events(csubstr filename, substr filecontents)
 {
     extra::EventHandlerTestSuite::EventSink sink = {};
     extra::EventHandlerTestSuite handler(&sink, create_custom_callbacks());
-    ParseEngine<extra::EventHandlerTestSuite> parser(&handler);
+    ParseEngine<extra::EventHandlerTestSuite> parser(&handler, parse_opts);
     {
         STOPWATCH("parse");
         parser.parse_in_place_ev(filename, filecontents);
@@ -293,7 +297,7 @@ csubstr parse_events_ints(csubstr filename, substr filecontents, std::string &pa
     using I = extra::ievt::DataType;
     using Handler = extra::EventHandlerInts;
     Handler handler(create_custom_callbacks());
-    ParseEngine<Handler> parser(&handler);
+    ParseEngine<Handler> parser(&handler, parse_opts);
     substr src = filecontents;
     if(!fail_size)
     {
@@ -445,6 +449,10 @@ bool Args::parse(Args *args, int argc, const char *argv[], int *errcode)
         {
             timing_enabled = true;
         }
+        else if(arg == "--resolve-tags" || arg == "-rt")
+        {
+            parse_opts = parse_opts.resolve_tags(true).resolve_tags_all(true);
+        }
         else if(arg == "--ints-size-force" || arg == "-isf")
         {
             args->ints_size_force = true;
@@ -514,14 +522,17 @@ Callbacks create_custom_callbacks()
         })
         .set_error_basic([](csubstr msg, yml::ErrorDataBasic const& errdata, void *){
             yml::err_basic_format(dump2stderr, msg, errdata); // LCOV_EXCL_LINE
+            dump2stderr("\n"); // LCOV_EXCL_LINE
             throwerr(msg); // LCOV_EXCL_LINE
         })
         .set_error_parse([](csubstr msg, yml::ErrorDataParse const& errdata, void *){
             yml::err_parse_format(dump2stderr, msg, errdata); // LCOV_EXCL_LINE
+            dump2stderr("\n"); // LCOV_EXCL_LINE
             throwerr(msg); // LCOV_EXCL_LINE
         })
         .set_error_visit([](csubstr msg, yml::ErrorDataVisit const& errdata, void *){
             yml::err_visit_format(dump2stderr, msg, errdata); // LCOV_EXCL_LINE
+            dump2stderr("\n"); // LCOV_EXCL_LINE
             throwerr(msg); // LCOV_EXCL_LINE
         });
 }

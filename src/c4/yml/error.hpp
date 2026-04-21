@@ -91,30 +91,50 @@ inline C4_NO_INLINE csubstr _maybe_add_ellipsis(substr buf, size_t len)
 }
 
 
-template<class T> struct dump_directly_ : public std::false_type {};
-template<> struct dump_directly_<csubstr> : public std::true_type {};
-template<> struct dump_directly_< substr> : public std::true_type {};
-template<> struct dump_directly_<const char*> : public std::true_type {};
-template<> struct dump_directly_<      char*> : public std::true_type {};
-template<size_t N> struct dump_directly_<const char (&)[N]> : public std::true_type {};
-template<size_t N> struct dump_directly_<      char (&)[N]> : public std::true_type {};
-template<size_t N> struct dump_directly_<const char[N]> : public std::true_type {};
-template<size_t N> struct dump_directly_<      char[N]> : public std::true_type {};
-template<class T> using dump_directly = dump_directly_<typename std::remove_cv<typename std::remove_reference<T>::type>::type>;
+// std::remove_cvref appeared in c++20
+template<class T>
+struct _remove_cvref
+{
+    using type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+};
+template<class T>
+struct _dump_directly : public c4::is_string<typename _remove_cvref<T>::type>
+{
+};
 
+
+#if C4_CPP >= 17
+template<class T> using _remove_cvref_t = typename _remove_cvref<T>::type;
+template<class T> using _dump_directly_v = typename _dump_directly<T>::value;
+template<class T>
+C4_NO_INLINE csubstr _to_chars_limited(substr buf, T &&var)
+{
+    if constexpr (_dump_directly<T>::value)
+    {
+        (void)buf;
+        return to_csubstr(std::forward<T>(var)); // no need to convert to buf
+    }
+    else
+    {
+        size_t len = to_chars(buf, std::forward<T>(var));
+        return _maybe_add_ellipsis(buf, len);
+    }
+}
+#else
+template<class T>
+C4_NO_INLINE auto _to_chars_limited(substr, T &&var)
+    -> typename std::enable_if<_dump_directly<T>::value, csubstr>::type
+{
+    return to_csubstr(std::forward<T>(var)); // no need to convert to buf
+}
 template<class T>
 C4_NO_INLINE auto _to_chars_limited(substr buf, T &&var)
-    -> typename std::enable_if< ! detail::dump_directly<T>::value, csubstr>::type
+    -> typename std::enable_if< ! _dump_directly<T>::value, csubstr>::type
 {
     size_t len = to_chars(buf, std::forward<T>(var));
     return _maybe_add_ellipsis(buf, len);
 }
-template<class T>
-C4_NO_INLINE auto _to_chars_limited(substr, T &&var)
-    -> typename std::enable_if<detail::dump_directly<T>::value, csubstr>::type
-{
-    return to_csubstr(std::forward<T>(var)); // no need to convert to buf
-}
+#endif
 
 
 // dumpfn is a function abstracting prints to terminal (or to string).
@@ -128,10 +148,10 @@ C4_NO_INLINE void _dump(DumpFn &&dumpfn, substr argbuf, csubstr fmt, Arg const& 
 {
     size_t pos = fmt.find("{}");
     if(pos == csubstr::npos)
-        return std::forward<DumpFn>(dumpfn)(fmt);
-    std::forward<DumpFn>(dumpfn)(fmt.first(pos));
-    std::forward<DumpFn>(dumpfn)(_to_chars_limited(argbuf, arg));
-    _dump(std::forward<DumpFn>(dumpfn), argbuf, fmt.sub(pos + 2), more...);
+        return std::forward<DumpFn>(dumpfn)(fmt); // NOLINT // LCOV_EXCL_LINE
+    std::forward<DumpFn>(dumpfn)(fmt.first(pos)); // NOLINT
+    std::forward<DumpFn>(dumpfn)(_to_chars_limited(argbuf, arg)); // NOLINT
+    _dump(std::forward<DumpFn>(dumpfn), argbuf, fmt.sub(pos + 2), more...); // NOLINT
 }
 
 

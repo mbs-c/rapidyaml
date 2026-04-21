@@ -963,28 +963,28 @@ ENGINE_TEST_ERRLOC(SeqIMapColonNextLineAfterDquo2, Location(2,3),
                    "[ \"key\" # comment"   "\n"
                    "  : value ]"       "\n")
 
-ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterSeq0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterSeq0, HAS_CONTAINER_KEYS,
                     Location(2,3),
                    "[ [seq]"   "\n"
                    "  : value ]"       "\n")
-ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterSeq1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterSeq1, HAS_CONTAINER_KEYS,
                     Location(2,3),
                    "[ [seq]  "   "\n"
                    "  : value ]"       "\n")
-ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterSeq2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterSeq2, HAS_CONTAINER_KEYS,
                     Location(2,3),
                    "[ [seq] # comment"   "\n"
                    "  : value ]"       "\n")
 
-ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterMap0, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterMap0, HAS_CONTAINER_KEYS,
                     Location(2,3),
                    "[ {map: yes}"   "\n"
                    "  : value ]"       "\n")
-ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterMap1, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterMap1, HAS_CONTAINER_KEYS,
                     Location(2,3),
                    "[ {map: yes}  "   "\n"
                    "  : value ]"       "\n")
-ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterMap2, HAS_CONTAINER_KEYS, ExpectedErrorType::err_parse,
+ENGINE_TEST_ERRLOC_(SeqIMapColonNextLineAfterMap2, HAS_CONTAINER_KEYS,
                     Location(2,3),
                    "[ {map: yes} # comment"   "\n"
                    "  : value ]"       "\n")

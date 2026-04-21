@@ -1,20 +1,33 @@
 #ifndef _C4_YML_PARSE_ENGINE_DEF_HPP_
 #define _C4_YML_PARSE_ENGINE_DEF_HPP_
 
+#ifndef _C4_YML_PARSE_ENGINE_HPP_
 #include "c4/yml/parse_engine.hpp"
-#include "c4/error.hpp"
+#endif
+#ifndef _C4_CHARCONV_HPP_
 #include "c4/charconv.hpp"
+#endif
+#ifndef C4_UTF_HPP_
 #include "c4/utf.hpp"
-
-#include <ctype.h>
-
-#include "c4/yml/detail/dbgprint.hpp"
+#endif
+#ifndef _C4_YML_FILTER_PROCESSOR_HPP_
 #include "c4/yml/filter_processor.hpp"
+#endif
+#ifndef _C4_YML_TAG_HPP_
 #include "c4/yml/tag.hpp"
+#endif
+#ifndef _C4_YML_NODE_TYPE_HPP_
+#include "c4/yml/node_type.hpp"
+#endif
+
+#ifndef _C4_YML_DETAIL_DBGPRINT_HPP_
+#include "c4/yml/detail/dbgprint.hpp"
+#endif
 
 #ifdef RYML_DBG
+#ifndef C4_DUMP_HPP_
 #include <c4/dump.hpp>
-#include "c4/yml/detail/print.hpp"
+#endif
 #define _c4err(...)   \
     do { RYML_DEBUG_BREAK(); this->_err(RYML_LOC_HERE(), __VA_ARGS__); } while(0)
 #else
@@ -65,7 +78,7 @@
 #   endif
 #endif
 
-// NOLINTBEGIN(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered)
+// NOLINTBEGIN(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered,modernize-avoid-c-style-cast)
 
 namespace c4 {
 namespace yml {
@@ -243,7 +256,9 @@ inline size_t _count_following_newlines(csubstr r, size_t *C4_RESTRICT i, size_t
             }
             // skip leading whitespace
             else if(c != ' ' && c != '\t' && c != '\r')
+            {
                 break;
+            }
         }
     }
     return numnl_following;
@@ -266,19 +281,18 @@ ParseEngine<EventHandler>::~ParseEngine()
 template<class EventHandler>
 ParseEngine<EventHandler>::ParseEngine(EventHandler *evt_handler, ParserOptions opts)
     : m_options(opts)
-    , m_file()
-    , m_buf()
     , m_evt_handler(evt_handler)
     , m_pending_anchors()
     , m_pending_tags()
-    , m_doc_empty(false)
+    , m_has_directives_yaml(false)
+    , m_has_directives(false)
+    , m_doc_empty(true)
     , m_prev_colon(npos)
     , m_prev_val_end(npos)
     , m_encoding(NOBOM)
     , m_newline_offsets()
     , m_newline_offsets_size(0)
     , m_newline_offsets_capacity(0)
-    , m_newline_offsets_buf()
 {
     _RYML_CHECK_BASIC(evt_handler);
 }
@@ -286,19 +300,18 @@ ParseEngine<EventHandler>::ParseEngine(EventHandler *evt_handler, ParserOptions 
 template<class EventHandler>
 ParseEngine<EventHandler>::ParseEngine(ParseEngine &&that) noexcept
     : m_options(that.m_options)
-    , m_file(that.m_file)
-    , m_buf(that.m_buf)
     , m_evt_handler(that.m_evt_handler)
     , m_pending_anchors(that.m_pending_anchors)
     , m_pending_tags(that.m_pending_tags)
-    , m_doc_empty(false)
+    , m_has_directives_yaml(that.m_has_directives_yaml)
+    , m_has_directives(that.m_has_directives)
+    , m_doc_empty(that.m_doc_empty)
     , m_prev_colon(npos)
     , m_prev_val_end(npos)
     , m_encoding(NOBOM)
     , m_newline_offsets(that.m_newline_offsets)
     , m_newline_offsets_size(that.m_newline_offsets_size)
     , m_newline_offsets_capacity(that.m_newline_offsets_capacity)
-    , m_newline_offsets_buf(that.m_newline_offsets_buf)
 {
     that._clr();
 }
@@ -306,19 +319,18 @@ ParseEngine<EventHandler>::ParseEngine(ParseEngine &&that) noexcept
 template<class EventHandler>
 ParseEngine<EventHandler>::ParseEngine(ParseEngine const& that)
     : m_options(that.m_options)
-    , m_file(that.m_file)
-    , m_buf(that.m_buf)
     , m_evt_handler(that.m_evt_handler)
     , m_pending_anchors(that.m_pending_anchors)
     , m_pending_tags(that.m_pending_tags)
-    , m_doc_empty(false)
+    , m_has_directives_yaml(that.m_has_directives_yaml)
+    , m_has_directives(that.m_has_directives)
+    , m_doc_empty(that.m_doc_empty)
     , m_prev_colon(npos)
     , m_prev_val_end(npos)
     , m_encoding(NOBOM)
     , m_newline_offsets()
     , m_newline_offsets_size()
     , m_newline_offsets_capacity()
-    , m_newline_offsets_buf()
 {
     if(that.m_newline_offsets_capacity)
     {
@@ -334,11 +346,11 @@ ParseEngine<EventHandler>& ParseEngine<EventHandler>::operator=(ParseEngine &&th
 {
     _free();
     m_options = (that.m_options);
-    m_file = (that.m_file);
-    m_buf = (that.m_buf);
     m_evt_handler = that.m_evt_handler;
     m_pending_anchors = that.m_pending_anchors;
     m_pending_tags = that.m_pending_tags;
+    m_has_directives_yaml = that.m_has_directives_yaml;
+    m_has_directives = that.m_has_directives;
     m_doc_empty = that.m_doc_empty;
     m_prev_colon = that.m_prev_colon;
     m_prev_val_end = that.m_prev_val_end;
@@ -346,7 +358,6 @@ ParseEngine<EventHandler>& ParseEngine<EventHandler>::operator=(ParseEngine &&th
     m_newline_offsets = (that.m_newline_offsets);
     m_newline_offsets_size = (that.m_newline_offsets_size);
     m_newline_offsets_capacity = (that.m_newline_offsets_capacity);
-    m_newline_offsets_buf = (that.m_newline_offsets_buf);
     that._clr();
     return *this;
 }
@@ -358,11 +369,11 @@ ParseEngine<EventHandler>& ParseEngine<EventHandler>::operator=(ParseEngine cons
     {
         _free();
         m_options = (that.m_options);
-        m_file = (that.m_file);
-        m_buf = (that.m_buf);
         m_evt_handler = that.m_evt_handler;
         m_pending_anchors = that.m_pending_anchors;
         m_pending_tags = that.m_pending_tags;
+        m_has_directives_yaml = that.m_has_directives_yaml;
+        m_has_directives = that.m_has_directives;
         m_doc_empty = that.m_doc_empty;
         m_prev_colon = that.m_prev_colon;
         m_prev_val_end = that.m_prev_val_end;
@@ -373,7 +384,6 @@ ParseEngine<EventHandler>& ParseEngine<EventHandler>::operator=(ParseEngine cons
         _RYML_CHECK_BASIC_(m_evt_handler->m_stack.m_callbacks, m_newline_offsets_capacity >= that.m_newline_offsets_size);
         memcpy(m_newline_offsets, that.m_newline_offsets, that.m_newline_offsets_size * sizeof(size_t));
         m_newline_offsets_size = that.m_newline_offsets_size;
-        m_newline_offsets_buf = that.m_newline_offsets_buf;
     }
     return *this;
 }
@@ -382,11 +392,11 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_clr()
 {
     m_options = {};
-    m_file = {};
-    m_buf = {};
     m_evt_handler = {};
     m_pending_anchors = {};
     m_pending_tags = {};
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     m_prev_colon = npos;
     m_prev_val_end = npos;
@@ -394,7 +404,6 @@ void ParseEngine<EventHandler>::_clr()
     m_newline_offsets = {};
     m_newline_offsets_size = {};
     m_newline_offsets_capacity = {};
-    m_newline_offsets_buf = {};
 }
 
 template<class EventHandler>
@@ -406,7 +415,6 @@ void ParseEngine<EventHandler>::_free()
         m_newline_offsets = nullptr;
         m_newline_offsets_size = 0u;
         m_newline_offsets_capacity = 0u;
-        m_newline_offsets_buf = nullptr;
     }
 }
 
@@ -418,6 +426,8 @@ void ParseEngine<EventHandler>::_reset()
 {
     m_pending_anchors = {};
     m_pending_tags = {};
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     m_prev_colon = npos;
     m_prev_val_end = npos;
@@ -434,27 +444,49 @@ void ParseEngine<EventHandler>::_reset()
 //-----------------------------------------------------------------------------
 
 template<class EventHandler>
-void ParseEngine<EventHandler>::_relocate_arena(csubstr prev_arena, substr next_arena)
+void ParseEngine<EventHandler>::_relocate_arena(csubstr prev_arena, substr next_arena, substr *other)
 {
-    #define _ryml_relocate(s)                                   \
-    if((s).is_sub(prev_arena))                                  \
-    {                                                           \
-        (s).str = next_arena.str + ((s).str - prev_arena.str);  \
+    _c4dbgp("relocate to new arena");
+    const char *pb = prev_arena.str;
+    const char *pe = prev_arena.str + prev_arena.len;
+    #define _ryml_relocate(s)                       \
+    if((s).str >= pb && (s).str <= pe)              \
+    {                                               \
+        (s).str = next_arena.str + ((s).str - pb);  \
     }
-    _ryml_relocate(m_buf);
-    _ryml_relocate(m_newline_offsets_buf);
+    for(ParserState &st : m_evt_handler->m_stack)
+    {
+        _ryml_relocate(st.line_contents.rem);
+        _ryml_relocate(st.line_contents.full);
+    }
+    _ryml_relocate(m_evt_handler->m_src);
     for(size_t i = 0; i < m_pending_tags.num_entries; ++i)
         _ryml_relocate(m_pending_tags.annotations[i].str); // LCOV_EXCL_LINE
     for(size_t i = 0; i < m_pending_anchors.num_entries; ++i)
         _ryml_relocate(m_pending_anchors.annotations[i].str); // LCOV_EXCL_LINE
+    TagDirectives &tds = m_evt_handler->tag_directives();
+    for(size_t i = 0, sz = tds.size(); i < sz; ++i)
+    {
+        _ryml_relocate(tds.m_directives[i].handle); // LCOV_EXCL_LINE
+        _ryml_relocate(tds.m_directives[i].prefix); // LCOV_EXCL_LINE
+    }
+    if(other)
+        _ryml_relocate(*other); // LCOV_EXCL_LINE
     #undef _ryml_relocate
 }
 
+/** @cond dev */
 template<class EventHandler>
-void ParseEngine<EventHandler>::_s_relocate_arena(void* data, csubstr prev_arena, substr next_arena)
+substr ParseEngine<EventHandler>::_alloc_arena(size_t len, substr *other)
 {
-    ((ParseEngine*)data)->_relocate_arena(prev_arena, next_arena);
+    csubstr prev = m_evt_handler->arena();
+    substr out = m_evt_handler->alloc_arena(len);
+    substr curr = m_evt_handler->arena();
+    if(curr.str != prev.str)
+        _relocate_arena(prev, curr, other);
+    return out;
 }
+/** @endcond */
 
 
 //-----------------------------------------------------------------------------
@@ -464,13 +496,14 @@ template<class EventHandler>
 template<class DumpFn>
 C4_NO_INLINE void ParseEngine<EventHandler>::_fmt_msg(DumpFn &&dumpfn) const
 {
-    auto const *const C4_RESTRICT st = m_evt_handler->m_curr;
-    auto const& lc = st->line_contents;
+    ParserState const *const C4_RESTRICT st = m_evt_handler->m_curr;
+    LineContents const& C4_RESTRICT lc = st->line_contents;
     csubstr contents = lc.full.first(lc.num_cols);
     if(contents.len)
     {
         // print the yaml src line
         size_t offs = 3u + to_chars(substr{}, st->pos.line) + to_chars(substr{}, st->pos.col);
+        csubstr m_file = m_evt_handler->m_curr->pos.name;
         if(m_file.len)
         {
             _dbg_dump(std::forward<DumpFn>(dumpfn), "{}:", m_file);
@@ -508,7 +541,7 @@ void ParseEngine<EventHandler>::_print_state_stack(substr buf) const
 {
     if(_dbg_enabled())
     {
-        for(typename EventHandler::state const& s : m_evt_handler->m_stack)
+        for(ParserState const& s : m_evt_handler->m_stack)
             _dbg_printf("state[{}]: ind={} node={} flags={}\n", s.level, s.indref, s.node_id, detail::_parser_flags_to_str(buf, s.flags));
     }
 }
@@ -561,7 +594,7 @@ void ParseEngine<EventHandler>::_dbg(csubstr fmt, Args const& ...args) const
 template<class EventHandler>
 bool ParseEngine<EventHandler>::_finished_file() const
 {
-    bool ret = m_evt_handler->m_curr->pos.offset >= m_buf.len;
+    bool ret = m_evt_handler->m_curr->pos.offset >= _buf().len;
     if(ret)
     {
         _c4dbgp("finished file!!!");
@@ -741,6 +774,11 @@ csubstr ParseEngine<EventHandler>::_scan_tag()
     {
         _c4dbgp("begins with '!'");
         _set_first(t, t.first_of(" ,]}\t"));
+        if(C4_UNLIKELY(t.first_of("[{") != npos))
+            _c4err("invalid tag");
+        _line_progressed(t.len);
+        if(m_options.resolve_tags_all() || (m_options.resolve_tags() && is_custom_tag(t)))
+            t = _resolve_tag(t);
     }
     else
     {
@@ -749,12 +787,9 @@ csubstr ParseEngine<EventHandler>::_scan_tag()
         if(C4_UNLIKELY(pos == npos))
             _c4err("invalid tag");
         _set_first_strict(t, pos+1);
+        _line_progressed(t.len);
+        t = t.sub(1);
     }
-    if(C4_UNLIKELY(t.first_of("[{") != npos))
-    {
-        _c4err("invalid tag");
-    }
-    _line_progressed(t.len);
     _maybe_skip_whitespace_tokens();
     return t;
 }
@@ -937,7 +972,7 @@ bool ParseEngine<EventHandler>::_scan_scalar_plain_seq_flow(ScannedScalar *C4_RE
     if(!m_evt_handler->m_curr->line_contents.rem.len || !_is_valid_start_scalar_plain_flow(m_evt_handler->m_curr->line_contents.rem))
         return false;
 
-    substr s = m_buf.sub(m_evt_handler->m_curr->pos.offset);
+    substr s = _buf().sub(m_evt_handler->m_curr->pos.offset);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.begins_with(m_evt_handler->m_curr->line_contents.rem), m_evt_handler->m_curr->pos);
 
     _c4dbgp("scanning seqflow scalar...");
@@ -1059,7 +1094,7 @@ bool ParseEngine<EventHandler>::_scan_scalar_plain_map_flow(ScannedScalar *C4_RE
     if(!m_evt_handler->m_curr->line_contents.rem.len || !_is_valid_start_scalar_plain_flow(m_evt_handler->m_curr->line_contents.rem))
         return false;
 
-    substr s = m_buf.sub(m_evt_handler->m_curr->pos.offset);
+    substr s = _buf().sub(m_evt_handler->m_curr->pos.offset);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.begins_with(m_evt_handler->m_curr->line_contents.rem), m_evt_handler->m_curr->pos);
 
     _c4dbgp("scanning mapflow scalar...");
@@ -1442,7 +1477,7 @@ bool ParseEngine<EventHandler>::_scan_scalar_plain_blck(ScannedScalar *C4_RESTRI
 
 ended_scalar:
 
-    sc->scalar = m_buf.range(start_offset, m_evt_handler->m_curr->pos.offset).trimr(" \n\r\t");
+    sc->scalar = _buf().range(start_offset, m_evt_handler->m_curr->pos.offset).trimr(" \n\r\t");
     sc->needs_filter = needs_filter;
 
     _c4dbgpf("scalar was {}", _prs(sc->scalar));
@@ -1489,11 +1524,11 @@ substr ParseEngine<EventHandler>::_peek_next_line(size_t pos) const
     substr rem{}; // declare here because of the goto
     size_t nlpos{}; // declare here because of the goto
     pos = pos == npos ? m_evt_handler->m_curr->pos.offset : pos;
-    if(pos >= m_buf.len)
+    if(pos >= _buf().len)
         goto next_is_empty;
 
     // look for the next newline chars, and jump to the right of those
-    rem = _from_next_line(m_buf.sub(pos));
+    rem = _from_next_line(_buf().sub(pos));
     if(rem.empty())
         goto next_is_empty;
 
@@ -1516,10 +1551,10 @@ next_is_empty:
 template<class EventHandler>
 void ParseEngine<EventHandler>::_scan_line()
 {
-    if(C4_LIKELY(m_evt_handler->m_curr->pos.offset < m_buf.len))
-        m_evt_handler->m_curr->line_contents.reset_with_next_line(m_buf, m_evt_handler->m_curr->pos.offset);
+    if(C4_LIKELY(m_evt_handler->m_curr->pos.offset < _buf().len))
+        m_evt_handler->m_curr->line_contents.reset_with_next_line(_buf(), m_evt_handler->m_curr->pos.offset);
     else
-        m_evt_handler->m_curr->line_contents.reset_with_next_line(m_buf.last(0), 0);
+        m_evt_handler->m_curr->line_contents.reset_with_next_line(_buf().last(0), 0);
 }
 
 template<class EventHandler>
@@ -1564,8 +1599,8 @@ void ParseEngine<EventHandler>::_line_ended_undo()
     --m_evt_handler->m_curr->pos.line;
     m_evt_handler->m_curr->pos.col = m_evt_handler->m_curr->line_contents.num_cols + 1u;
     // don't forget to undo also the changes to the remainder of the line
-    //_RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_curr->pos.offset >= m_buf.len || m_buf[m_evt_handler->m_curr->pos.offset] == '\n' || m_buf[m_evt_handler->m_curr->pos.offset] == '\r', m_evt_handler->m_curr->pos);
-    m_evt_handler->m_curr->line_contents.rem = m_buf.sub(m_evt_handler->m_curr->pos.offset, 0);
+    //_RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_curr->pos.offset >= _buf().len || _buf()[m_evt_handler->m_curr->pos.offset] == '\n' || _buf()[m_evt_handler->m_curr->pos.offset] == '\r', m_evt_handler->m_curr->pos);
+    m_evt_handler->m_curr->line_contents.rem = _buf().sub(m_evt_handler->m_curr->pos.offset, 0);
 }
 
 
@@ -1733,6 +1768,8 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_begin2_doc()
 {
     _c4dbgp("begin_doc");
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     add_flags(RDOC);
     m_evt_handler->begin_doc();
@@ -1743,6 +1780,8 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_begin2_doc_expl()
 {
     _c4dbgp("begin_doc_expl");
+    m_has_directives_yaml = false;
+    m_has_directives = false;
     m_doc_empty = true;
     add_flags(RDOC);
     m_evt_handler->begin_doc_expl();
@@ -1816,6 +1855,19 @@ void ParseEngine<EventHandler>::_end_doc_suddenly__pop()
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, has_any(RDOC), m_evt_handler->m_curr->pos);
 }
 
+/** Check whether the current parse tokens are trailing on the
+ * previous doc, and raise an error if they are */
+template<class EventHandler>
+void ParseEngine<EventHandler>::_check_trailing_doc_token()
+{
+    const bool is_root = (m_evt_handler->m_stack.size() == 1u);
+    const bool isndoc = (m_evt_handler->m_curr->flags & NDOC) != 0;
+    const bool suspicious = m_evt_handler->template _has_any__<MAP|SEQ|VAL>();
+    _c4dbgpf("target={} isroot={} suspicious={} ndoc={}", m_evt_handler->m_curr->node_id, is_root, suspicious, isndoc);
+    if((is_root || m_evt_handler->template _has_any__<DOC>()) && suspicious && !isndoc)
+        _c4err("parse error");
+}
+
 template<class EventHandler>
 void ParseEngine<EventHandler>::_end_doc_suddenly()
 {
@@ -1849,9 +1901,9 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::_end_stream()
 {
     _c4dbgpf("end_stream, level={} node_id={}", m_evt_handler->m_curr->level, m_evt_handler->m_curr->node_id);
-    if(has_all(RSEQ|RFLOW))
+    if(C4_UNLIKELY(has_all(RSEQ|RFLOW)))
         _c4err("missing terminating ]");
-    else if(has_all(RMAP|RFLOW))
+    else if(C4_UNLIKELY(has_all(RMAP|RFLOW)))
         _c4err("missing terminating }");
     if(m_evt_handler->m_stack.size() > 1)
         _handle_indentation_pop(m_evt_handler->m_stack.begin());
@@ -1873,6 +1925,8 @@ void ParseEngine<EventHandler>::_end_stream()
         }
     }
     m_evt_handler->end_stream();
+    if(C4_UNLIKELY(m_has_directives))
+        _c4err("directives cannot be used without a document");
 }
 
 
@@ -1986,7 +2040,7 @@ void ParseEngine<EventHandler>::_handle_indentation_pop_from_block_map()
 template<class EventHandler>
 void ParseEngine<EventHandler>::_check_valid_newline_in_quoted_scalar()
 {
-    if(has_all(RMAP|RBLCK|RKEY))
+    if(C4_UNLIKELY(has_all(RMAP|RBLCK|RKEY)))
     {
         _c4err("multiline quoted keys are invalid");
     }
@@ -2017,10 +2071,10 @@ typename ParseEngine<EventHandler>::ScannedScalar ParseEngine<EventHandler>::_sc
     // quoted scalars can spread over multiple lines!
     // nice explanation here: http://yaml-multiline.info/
 
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_buf.sub(m_evt_handler->m_curr->pos.offset).begins_with('\''), m_evt_handler->m_curr->pos);
+    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, _buf().sub(m_evt_handler->m_curr->pos.offset).begins_with('\''), m_evt_handler->m_curr->pos);
 
     // a span to the end of the file, skipping the opening quote
-    substr s = m_buf.sub(m_evt_handler->m_curr->pos.offset + 1);
+    substr s = _buf().sub(m_evt_handler->m_curr->pos.offset + 1);
     _line_progressed(1); // advance over the opening quote
 
     bool needs_filter = false;
@@ -2065,8 +2119,8 @@ found_close:
     _c4dbgpf("found closing quote at: {}", pos);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, pos != npos, m_evt_handler->m_curr->pos);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, pos >= 0, m_evt_handler->m_curr->pos);
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() >= m_buf.begin() && s.end() <= m_buf.end(), m_evt_handler->m_curr->pos);
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() == m_buf.end() || *s.end() == '\'', m_evt_handler->m_curr->pos);
+    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() >= _buf().begin() && s.end() <= _buf().end(), m_evt_handler->m_curr->pos);
+    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() == _buf().end() || *s.end() == '\'', m_evt_handler->m_curr->pos);
     _set_first_strict(s, pos);
 
     _c4prscalar("scanned squoted scalar", s, /*keep_newlines*/true);
@@ -2082,10 +2136,10 @@ typename ParseEngine<EventHandler>::ScannedScalar ParseEngine<EventHandler>::_sc
     // quoted scalars can spread over multiple lines!
     // nice explanation here: http://yaml-multiline.info/
 
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, m_buf.sub(m_evt_handler->m_curr->pos.offset).begins_with('"'), m_evt_handler->m_curr->pos);
+    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, _buf().sub(m_evt_handler->m_curr->pos.offset).begins_with('"'), m_evt_handler->m_curr->pos);
 
     // a span to the end of the file, skipping the opening quote
-    substr s = m_buf.sub(m_evt_handler->m_curr->pos.offset + 1);
+    substr s = _buf().sub(m_evt_handler->m_curr->pos.offset + 1);
     _line_progressed(1); // advance over the opening quote
 
     bool needs_filter = false;
@@ -2133,8 +2187,8 @@ found_close:
     _c4dbgpf("found closing quote at: {}", pos);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, pos != npos, m_evt_handler->m_curr->pos);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, pos >= 0, m_evt_handler->m_curr->pos);
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() >= m_buf.begin() && s.end() <= m_buf.end(), m_evt_handler->m_curr->pos);
-    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() == m_buf.end() || *s.end() == '"', m_evt_handler->m_curr->pos);
+    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() >= _buf().begin() && s.end() <= _buf().end(), m_evt_handler->m_curr->pos);
+    _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.end() == _buf().end() || *s.end() == '"', m_evt_handler->m_curr->pos);
     _set_first_strict(s, pos);
 
     _c4prscalar("scanned dquoted scalar", s, /*keep_newlines*/true);
@@ -2208,7 +2262,7 @@ void ParseEngine<EventHandler>::_scan_block(ScannedBlock *C4_RESTRICT sb, size_t
     _scan_line();
 
     // start with a zero-length block, already pointing at the right place
-    substr raw_block(m_buf.data() + m_evt_handler->m_curr->pos.offset, size_t(0));// m_evt_handler->m_curr->line_contents.full.sub(0, 0);
+    substr raw_block(_buf().data() + m_evt_handler->m_curr->pos.offset, size_t(0));// m_evt_handler->m_curr->line_contents.full.sub(0, 0);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, raw_block.begin() == m_evt_handler->m_curr->line_contents.full.str, m_evt_handler->m_curr->pos);
 
     // read every full line into a raw block,
@@ -2224,7 +2278,7 @@ void ParseEngine<EventHandler>::_scan_block(ScannedBlock *C4_RESTRICT sb, size_t
     while(( ! _finished_file()))
     {
         // peek next line, but do not advance immediately
-        lc.reset_with_next_line(m_buf, m_evt_handler->m_curr->pos.offset);
+        lc.reset_with_next_line(_buf(), m_evt_handler->m_curr->pos.offset);
         #if defined(__GNUC__) && (__GNUC__ == 12 || __GNUC__ == 13)
         C4_DONT_OPTIMIZE(lc.rem);
         #endif
@@ -3591,7 +3645,7 @@ csubstr ParseEngine<EventHandler>::_filter_scalar_dquot(substr s)
     {
         const size_t len = r.required_len();
         _c4dbgpf("filtering dquo scalar: not enough space: needs {}, have {}", len, s.len);
-        substr dst = m_evt_handler->alloc_arena(len, &s);
+        substr dst = _alloc_arena(len, &s);
         _c4dbgpf("filtering dquo scalar: dst.len={}", dst.len);
         if(dst.str)
         {
@@ -3613,10 +3667,10 @@ csubstr ParseEngine<EventHandler>::_filter_scalar_dquot(substr s)
 template<class EventHandler>
 csubstr ParseEngine<EventHandler>::_move_scalar_left_and_add_newline(substr s)
 {
-    if(s.is_sub(m_buf))
+    if(s.is_sub(_buf()))
     {
-        _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.str > m_buf.str, m_evt_handler->m_curr->pos);
-        _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.str-1 >= m_buf.str, m_evt_handler->m_curr->pos);
+        _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.str > _buf().str, m_evt_handler->m_curr->pos);
+        _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, s.str-1 >= _buf().str, m_evt_handler->m_curr->pos);
         if(s.len)
             memmove(s.str - 1, s.str, s.len);
         --s.str;
@@ -3626,7 +3680,7 @@ csubstr ParseEngine<EventHandler>::_move_scalar_left_and_add_newline(substr s)
     }
     else
     {
-        substr dst = m_evt_handler->alloc_arena(s.len + 1);
+        substr dst = _alloc_arena(s.len + 1, &s);
         if(s.len)
             memcpy(dst.str, s.str, s.len);
         dst[s.len] = '\n';
@@ -3994,26 +4048,24 @@ inline C4_NO_INLINE csubstr detail::_parser_flags_to_str(substr buf, ParserFlag_
 template<class EventHandler>
 csubstr ParseEngine<EventHandler>::location_contents(Location const& loc) const
 {
-    _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, loc.offset < m_buf.len);
-    return m_buf.sub(loc.offset);
+    _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, loc.offset < _buf().len);
+    return _buf().sub(loc.offset);
 }
 
 template<class EventHandler>
 Location ParseEngine<EventHandler>::val_location(const char *val) const
 {
     if(C4_UNLIKELY(val == nullptr))
-        return {m_file, 0, 0, 0};
+        return {m_evt_handler->m_curr->pos.name, 0, 0, 0};
     _RYML_CHECK_BASIC_(m_evt_handler->m_stack.m_callbacks, m_options.locations());
     // NOTE: if any of these checks fails, the parser needs to be
     // instantiated with locations enabled.
-    _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_buf.str == m_newline_offsets_buf.str);
-    _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_buf.len == m_newline_offsets_buf.len);
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_options.locations());
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, !_locations_dirty());
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_newline_offsets != nullptr);
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_newline_offsets_size > 0);
     // NOTE: the pointer needs to belong to the buffer that was used to parse.
-    csubstr src = m_buf;
+    csubstr src = _buf();
     _RYML_CHECK_BASIC_(m_evt_handler->m_stack.m_callbacks, val != nullptr || src.str == nullptr);
     _RYML_CHECK_BASIC_(m_evt_handler->m_stack.m_callbacks, (val >= src.begin() && val <= src.end()) || (src.str == nullptr && val == nullptr));
     // ok. search the first stored newline after the given ptr
@@ -4039,13 +4091,11 @@ Location ParseEngine<EventHandler>::val_location(const char *val) const
         // We could use std::lower_bound but this is simple enough and
         // spares the costly include of <algorithm>.
         size_t count = m_newline_offsets_size;
-        size_t step;
-        lineptr_type it;
         lineptr = m_newline_offsets;
         while(count)
         {
-            step = count >> 1;
-            it = lineptr + step;
+            size_t step = count >> 1;
+            lineptr_type it = lineptr + step;
             if(*it < offset)
             {
                 lineptr = ++it;
@@ -4061,7 +4111,7 @@ Location ParseEngine<EventHandler>::val_location(const char *val) const
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, lineptr <= m_newline_offsets + m_newline_offsets_size);
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, *lineptr > offset);
     Location loc;
-    loc.name = m_file;
+    loc.name = m_evt_handler->m_curr->pos.name;
     loc.offset = offset;
     loc.line = (size_t)(lineptr - m_newline_offsets);
     if(lineptr > m_newline_offsets)
@@ -4074,20 +4124,21 @@ Location ParseEngine<EventHandler>::val_location(const char *val) const
 template<class EventHandler>
 void ParseEngine<EventHandler>::_prepare_locations()
 {
-    m_newline_offsets_buf = m_buf;
-    size_t numnewlines = 1u + m_buf.count('\n');
+    csubstr src = _buf();
+    size_t numnewlines = 1u + src.count('\n');
     _resize_locations(numnewlines);
     m_newline_offsets_size = 0;
-    for(size_t i = 0; i < m_buf.len; i++)
-        if(m_buf[i] == '\n')
-            m_newline_offsets[m_newline_offsets_size++] = i;
-    m_newline_offsets[m_newline_offsets_size++] = m_buf.len;
+    for(size_t i = 0; i < src.len; i++)
+        if(src.str[i] == '\n')
+            m_newline_offsets[m_newline_offsets_size++] = i; // NOLINT
+    m_newline_offsets[m_newline_offsets_size++] = src.len; // NOLINT
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_newline_offsets_size == numnewlines);
 }
 
 template<class EventHandler>
 void ParseEngine<EventHandler>::_resize_locations(size_t numnewlines)
 {
+    numnewlines = numnewlines >= 16 ? numnewlines : 16;
     if(numnewlines > m_newline_offsets_capacity)
     {
         if(m_newline_offsets)
@@ -4173,7 +4224,7 @@ void ParseEngine<EventHandler>::_handle_block_check_leading_tabs(size_t start_ma
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, end_mark >= start_mark, m_evt_handler->m_curr->pos);
     if(end_mark != start_mark)
     {
-        csubstr leading = m_buf.range(start_mark, end_mark);
+        csubstr leading = _buf().range(start_mark, end_mark);
         _c4dbgpf("block: leading[{}-{}]={}", start_mark, end_mark, _prs(leading, true));
         if(leading.find('\t') != npos)
             _c4err("invalid tab character to the left");
@@ -4200,7 +4251,7 @@ void ParseEngine<EventHandler>::_handle_colon()
 template<class EventHandler>
 void ParseEngine<EventHandler>::_add_annotation(Annotation *C4_RESTRICT dst, csubstr str)
 {
-    _c4dbgpf("store annotation[{}]: '{}'", dst->num_entries, str);
+    _c4dbgpf("store annotation[{}]: {}", dst->num_entries, _prs(str));
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, dst->num_entries < C4_COUNTOF(dst->annotations), m_evt_handler->m_curr->pos); // NOLINT(bugprone-sizeof-expression)
     dst->annotations[dst->num_entries].str = str;
     dst->annotations[dst->num_entries].indentation = {};
@@ -4211,7 +4262,7 @@ void ParseEngine<EventHandler>::_add_annotation(Annotation *C4_RESTRICT dst, csu
 template<class EventHandler>
 void ParseEngine<EventHandler>::_add_annotation(Annotation *C4_RESTRICT dst, csubstr str, size_t indentation, size_t line)
 {
-    _c4dbgpf("store annotation[{}]: '{}' indentation={} line={}", dst->num_entries, str, indentation, line);
+    _c4dbgpf("store annotation[{}]: '{}' indentation={} line={}", dst->num_entries, str.str ? str : csubstr("(arena full)"), indentation, line);
     _RYML_ASSERT_PARSE_(m_evt_handler->m_stack.m_callbacks, dst->num_entries < C4_COUNTOF(dst->annotations), m_evt_handler->m_curr->pos); // NOLINT(bugprone-sizeof-expression)
     dst->annotations[dst->num_entries].str = str;
     dst->annotations[dst->num_entries].indentation = indentation;
@@ -4236,7 +4287,7 @@ bool ParseEngine<EventHandler>::_handle_annotations_before_unexpected_flow_token
         _c4dbgpf("handle_annotations_before_unexpected_flow_comma_rkey, #tags={}", m_pending_tags.num_entries);
         if(C4_LIKELY(m_pending_tags.num_entries == 1))
         {
-            m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
         else
@@ -4271,7 +4322,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_blck_key_scalar()
         _c4dbgpf("annotations_before_blck_key_scalar, #tags={}", m_pending_tags.num_entries);
         if(C4_LIKELY(m_pending_tags.num_entries == 1))
         {
-            m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
         else
@@ -4303,7 +4354,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_blck_val_scalar()
         _c4dbgpf("annotations_before_blck_val_scalar, #tags={}", m_pending_tags.num_entries);
         if(C4_LIKELY(m_pending_tags.num_entries == 1))
         {
-            m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
         else
@@ -4341,7 +4392,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck(size_t 
         if(m_pending_tags.annotations[0].line < current_line)
         {
             _c4dbgp("...tag is for the map. setting it.");
-            m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
+             m_evt_handler->set_val_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
         }
     }
@@ -4370,7 +4421,7 @@ void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck_as_key(
     switch(m_pending_tags.num_entries)
     {
     case 1u:
-        _c4dbgpf("annotations_after_start_mapblck_as_key: 1 tag={} line={} currline=", m_pending_tags.annotations[0].str, m_pending_tags.annotations[0].line, m_evt_handler->m_curr->pos.line);
+        _c4dbgpf("annotations_after_start_mapblck_as_key: 1 tag={} line={} currline=", _prs(m_pending_tags.annotations[0].str), m_pending_tags.annotations[0].line, m_evt_handler->m_curr->pos.line);
         if(m_pending_tags.annotations[0].line != m_evt_handler->m_curr->pos.line)
         {
             _c4dbgp("annotations_after_start_mapblck_as_key: is map tag");
@@ -4379,8 +4430,8 @@ void ParseEngine<EventHandler>::_handle_annotations_before_start_mapblck_as_key(
         }
         break;
     case 2u:
-        _c4dbgpf("annotations_after_start_mapblck_as_key: 2 tags: {} -> {}", m_pending_tags.annotations[0].str, m_pending_tags.annotations[1].str);
-        m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+        _c4dbgpf("annotations_after_start_mapblck_as_key: 2 tags: {} -> {}", _prs(m_pending_tags.annotations[0].str), _prs(m_pending_tags.annotations[1].str));
+         m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
         break;
     }
     switch(m_pending_anchors.num_entries)
@@ -4413,13 +4464,13 @@ void ParseEngine<EventHandler>::_handle_annotations_and_indentation_after_start_
         switch(m_pending_tags.num_entries)
         {
         case 1u:
-            _c4dbgpf("annotations_after_start_mapblck: 1 tag: {}", m_pending_tags.annotations[0].str);
-            m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
+            _c4dbgpf("annotations_after_start_mapblck: 1 tag: {}", _prs(m_pending_tags.annotations[0].str));
+             m_evt_handler->set_key_tag(m_pending_tags.annotations[0].str);
             _clear_annotations(&m_pending_tags);
             break;
         case 2u:
-            _c4dbgpf("annotations_after_start_mapblck: 2 tags: {} -> {}", m_pending_tags.annotations[0].str, m_pending_tags.annotations[1].str);
-            m_evt_handler->set_key_tag(m_pending_tags.annotations[1].str);
+            _c4dbgpf("annotations_after_start_mapblck: 2 tags: {} -> {}", _prs(m_pending_tags.annotations[0].str), _prs(m_pending_tags.annotations[1].str));
+             m_evt_handler->set_key_tag(m_pending_tags.annotations[1].str);
             _clear_annotations(&m_pending_tags);
             break;
         }
@@ -4484,6 +4535,34 @@ void ParseEngine<EventHandler>::_handle_valref(csubstr alias)
 }
 
 template<class EventHandler>
+csubstr ParseEngine<EventHandler>::_resolve_tag(csubstr tag)
+{
+    _c4dbgpf("resolving tag: {} curr_doc={}", _prs(tag), m_evt_handler->m_curr_doc);
+    size_t bufsz = 0;
+    substr buf = m_evt_handler->arena_rem();
+    TagDirectives const& C4_RESTRICT tds = m_evt_handler->tag_directives();
+    csubstr ttag = tds.resolve(buf, &bufsz, tag, m_evt_handler->m_curr_doc,
+                               m_evt_handler->m_curr->pos,
+                               m_evt_handler->m_stack.m_callbacks);
+    _c4dbgpf("resolving tag: bufsz={}", bufsz);
+    if(bufsz)
+    {
+        substr bufretry = _alloc_arena(bufsz, &tag);
+        if(C4_UNLIKELY(bufsz > buf.len))
+        {
+            if(bufretry.str) // some handlers may be just counting the required arena size
+            {
+                ttag = tds.resolve(bufretry, &bufsz, tag, m_evt_handler->m_curr_doc,
+                                   m_evt_handler->m_curr->pos,
+                                   m_evt_handler->m_stack.m_callbacks);
+            }
+        }
+    }
+    _c4dbgpf("resolving tag: {} -->  {}", _prs(tag), _prs(ttag.str ? ttag : csubstr("(arena full)")));
+    return ttag;
+}
+
+template<class EventHandler>
 bool ParseEngine<EventHandler>::_validate_directive_yaml(csubstr *C4_RESTRICT directive, csubstr *C4_RESTRICT version) const
 {
     _c4assert(directive->begins_with("%YAML"));
@@ -4541,6 +4620,9 @@ void ParseEngine<EventHandler>::_handle_directive(csubstr directive)
     _c4dbgpf("handle_directive: rem={}", _prs(directive, true));
     _c4assert(m_evt_handler->m_curr->line_contents.rem.begins_with('%'));
     _c4assert(directive.str == m_evt_handler->m_curr->line_contents.rem.str);
+    const char *err = nullptr;
+    csubstr rem;
+    size_t pos;
     auto isdirective = [](csubstr str, csubstr dir) {
         if(str.begins_with(dir))
         {
@@ -4554,24 +4636,43 @@ void ParseEngine<EventHandler>::_handle_directive(csubstr directive)
         csubstr handle;
         csubstr prefix;
         if(C4_UNLIKELY(!_validate_directive_tag(&directive, &handle, &prefix)))
-            _c4err("invalid %TAG directive");
+        {
+            err = "invalid %TAG directive";
+            goto directive_error; // NOLINT
+        }
         m_evt_handler->add_directive_tag(handle, prefix);
     }
     else if(isdirective(directive, "%YAML"))
     {
         csubstr version;
         if(C4_UNLIKELY(!_validate_directive_yaml(&directive, &version)))
-            _c4err("invalid %YAML directive");
+        {
+            err = "invalid %YAML directive";
+            goto directive_error; // NOLINT
+        }
+        if(C4_UNLIKELY(m_has_directives_yaml))
+        {
+            err = "multiple %YAML directives";
+            goto directive_error; // NOLINT
+        }
+        m_has_directives_yaml = true;
         m_evt_handler->add_directive_yaml(version);
     }
-    csubstr rem = m_evt_handler->m_curr->line_contents.rem;
-    size_t pos = rem.first_not_of(" \t", directive.len);
+    m_has_directives = true;
+    rem = m_evt_handler->m_curr->line_contents.rem;
+    pos = rem.first_not_of(" \t", directive.len);
     pos = pos != npos ? pos : rem.len;
     _line_progressed(pos);
     rem = rem.sub(pos);
     _c4dbgpf("handle_directive: rest={}", _prs(rem));
-    if(rem.len && !rem.begins_with('#'))
-        _c4err("invalid tokens after directive");
+    if(C4_UNLIKELY(rem.len && !rem.begins_with('#')))
+    {
+        err = "invalid tokens after directive";
+        goto directive_error; // NOLINT
+    }
+directive_error:
+    if(C4_UNLIKELY(err != nullptr))
+        _c4err(err);
 }
 
 template<class EventHandler>
@@ -4633,7 +4734,7 @@ void ParseEngine<EventHandler>::_handle_bom(Encoding_e enc)
 {
     if(m_encoding == NOBOM)
     {
-        if(enc == UTF8 || /*beginning of file*/(m_evt_handler->m_curr->line_contents.rem.str == m_buf.str))
+        if(enc == UTF8 || /*beginning of file*/(m_evt_handler->m_curr->line_contents.rem.str == _buf().str))
             m_encoding = enc;
         else
             _c4err("non-UTF8 byte order mark can appear only at the beginning of the file");
@@ -7481,7 +7582,7 @@ void ParseEngine<EventHandler>::_handle_unk_json()
     if(rem.begins_with('['))
     {
         _c4dbgp("it's a seq");
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         m_evt_handler->begin_seq_val_flow();
         addrem_flags(RSEQ|RFLOW|RVAL, RUNK|RTOP|RDOC);
@@ -7492,7 +7593,7 @@ void ParseEngine<EventHandler>::_handle_unk_json()
     else if(rem.begins_with('{'))
     {
         _c4dbgp("it's a map");
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         m_evt_handler->begin_map_val_flow();
         addrem_flags(RMAP|RFLOW|RKEY, RVAL|RTOP|RUNK|RDOC);
@@ -7517,7 +7618,7 @@ void ParseEngine<EventHandler>::_handle_unk_json()
         if(first == '"')
         {
             _c4dbgp("runk_json: scanning double-quoted scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -7537,7 +7638,7 @@ void ParseEngine<EventHandler>::_handle_unk_json()
         else if(_scan_scalar_plain_unk(&sc))
         {
             _c4dbgp("runk_json: got a plain scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -7630,7 +7731,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         else if(first == '%')
         {
             _c4dbgpf("directive: {}", m_evt_handler->m_curr->line_contents.rem);
-            if(C4_UNLIKELY(!m_doc_empty && has_none(NDOC)))
+            if(C4_UNLIKELY(has_any(RDOC) || (!m_doc_empty && has_none(NDOC))))
                 _c4err("need document footer before directives");
             _handle_directive(m_evt_handler->m_curr->line_contents.rem);
             return;
@@ -7661,7 +7762,7 @@ void ParseEngine<EventHandler>::_handle_unk()
 
     if(first == '[')
     {
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         m_doc_empty = false;
         if(C4_LIKELY( ! _annotations_require_key_container()))
@@ -7687,7 +7788,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     }
     else if(first == '{')
     {
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         m_doc_empty = false;
         if(C4_LIKELY( ! _annotations_require_key_container()))
@@ -7726,7 +7827,7 @@ void ParseEngine<EventHandler>::_handle_unk()
             realindent = firstns;
         }
         _handle_block_check_leading_tabs(startcol);
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         _handle_annotations_before_blck_val_scalar();
         m_evt_handler->begin_seq_val_block();
@@ -7740,7 +7841,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     {
         _c4dbgp("runk: it's a map + this key is complex");
         _handle_block_check_leading_tabs(startcol);
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         _handle_annotations_before_blck_val_scalar();
         m_evt_handler->begin_map_val_block();
@@ -7767,7 +7868,7 @@ void ParseEngine<EventHandler>::_handle_unk()
             _c4dbgp("runk: it's a map with an empty key");
             _handle_block_check_leading_tabs(startcol);
             const size_t startline = m_evt_handler->m_curr->pos.line; // save
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             _handle_annotations_before_start_mapblck(startline);
             _handle_colon();
@@ -7789,7 +7890,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     {
         csubstr anchor = _scan_anchor();
         _c4dbgpf("anchor! {}", _prs(anchor));
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         const size_t line = m_evt_handler->m_curr->pos.line;
         _add_annotation(&m_pending_anchors, anchor, remindent, line);
@@ -7799,7 +7900,7 @@ void ParseEngine<EventHandler>::_handle_unk()
     {
         csubstr ref = _scan_ref_map();
         _c4dbgpf("runk: ref! {}", _prs(ref));
-        m_evt_handler->check_trailing_doc_token();
+        _check_trailing_doc_token();
         _maybe_begin_doc();
         m_doc_empty = false;
         if(!_maybe_scan_following_colon())
@@ -7839,7 +7940,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         if(first == '\'')
         {
             _c4dbgp("runk: scanning single-quoted scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -7871,7 +7972,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         else if(first == '"')
         {
             _c4dbgp("runk: scanning double-quoted scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -7903,7 +8004,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         else if(first == '|')
         {
             _c4dbgp("runk: scanning block-literal scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -7917,7 +8018,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         else if(first == '>')
         {
             _c4dbgp("runk: scanning block-folded scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -7931,7 +8032,7 @@ void ParseEngine<EventHandler>::_handle_unk()
         else if(_scan_scalar_plain_unk(&sc))
         {
             _c4dbgp("runk: got a plain scalar");
-            m_evt_handler->check_trailing_doc_token();
+            _check_trailing_doc_token();
             _maybe_begin_doc();
             add_flags(RDOC);
             m_doc_empty = false;
@@ -8424,11 +8525,9 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::parse_json_in_place_ev(csubstr filename, substr src)
 {
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_stack.size() >= 1);
-    m_file = filename;
-    m_buf = src;
-    _reset();
-    m_evt_handler->start_parse(filename.str, src, &_s_relocate_arena, this);
+    m_evt_handler->start_parse(filename.str, src);
     m_evt_handler->begin_stream();
+    _reset();
     while( ! _finished_file())
     {
         _scan_line();
@@ -8468,11 +8567,9 @@ template<class EventHandler>
 void ParseEngine<EventHandler>::parse_in_place_ev(csubstr filename, substr src)
 {
     _RYML_ASSERT_BASIC_(m_evt_handler->m_stack.m_callbacks, m_evt_handler->m_stack.size() >= 1);
-    m_file = filename;
-    m_buf = src;
-    _reset();
-    m_evt_handler->start_parse(filename.str, src, &_s_relocate_arena, this);
+    m_evt_handler->start_parse(filename.str, src);
     m_evt_handler->begin_stream();
+    _reset();
     while( ! _finished_file())
     {
         _scan_line();
@@ -8536,7 +8633,7 @@ void ParseEngine<EventHandler>::parse_in_place_ev(csubstr filename, substr src)
 } // namespace yml
 } // namespace c4
 
-// NOLINTEND(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered)
+// NOLINTEND(hicpp-signed-bitwise,cppcoreguidelines-avoid-goto,hicpp-avoid-goto,hicpp-multiway-paths-covered,modernize-avoid-c-style-cast)
 
 #undef _c4dbgnextline
 #undef _c4assert

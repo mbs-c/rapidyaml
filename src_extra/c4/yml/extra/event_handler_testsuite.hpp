@@ -5,6 +5,9 @@
 #ifndef _C4_YML_EVENT_HANDLER_STACK_HPP_
 #include "c4/yml/event_handler_stack.hpp"
 #endif
+#ifndef _C4_YML_TAG_HPP_
+#include "c4/yml/tag.hpp"
+#endif
 #endif
 #ifndef _C4_YML_EXTRA_STRING_HPP_
 #include "c4/yml/extra/string.hpp"
@@ -60,13 +63,9 @@ public:
     /** @cond dev */
     EventSink *C4_RESTRICT m_sink;
     extra::string_vector m_val_buffers;
-    extra::string m_key_tag_buf;
-    extra::string m_val_tag_buf;
-    TagDirective m_tag_directives[RYML_MAX_TAG_DIRECTIVES];
-    bool m_has_yaml_directive;
+    id_type m_curr_doc;
     extra::string m_arena;
-    bool m_has_docs;
-    csubstr m_src;
+    TagDirectives m_tag_directives;
 
     // undefined at the end
     #define _enable_(bits) _enable__<bits>()
@@ -76,6 +75,7 @@ public:
     void _dbg_print() const
     {
         #ifdef RYML_DBG
+        _dbg_printf("\n");
         auto indent = [](id_type n){
             for(id_type level = 0; level < n; ++level)
             {
@@ -86,7 +86,7 @@ public:
         {
             csubstr const& str = _buf_(i);
             indent(i);
-            _dbg_printf("[{}]\n", i);
+            _dbg_printf("[{}] @id={}\n", i, m_stack[i].node_id);
             for(csubstr ln : str.split('\n'))
             {
                 indent(i);
@@ -102,30 +102,28 @@ public:
     /** @name construction and resetting
      * @{ */
 
-    EventHandlerTestSuite() : EventHandlerStack(), m_sink(), m_val_buffers(), m_key_tag_buf(), m_val_tag_buf(), m_tag_directives(), m_has_yaml_directive(), m_arena(), m_has_docs(), m_src() {}
-    EventHandlerTestSuite(Callbacks const& cb) : EventHandlerStack(cb), m_sink(), m_val_buffers(), m_key_tag_buf(), m_val_tag_buf(), m_tag_directives(), m_has_yaml_directive(), m_arena(), m_has_docs(), m_src()  {}
-    EventHandlerTestSuite(EventSink *sink, Callbacks const& cb) : EventHandlerStack(cb), m_sink(sink), m_val_buffers(), m_key_tag_buf(), m_val_tag_buf(), m_tag_directives(), m_has_yaml_directive(), m_arena(), m_has_docs(), m_src()
+    EventHandlerTestSuite(EventSink *sink, Callbacks const& cb) : EventHandlerStack(cb), m_sink(sink), m_val_buffers(), m_curr_doc(), m_arena(), m_tag_directives()
     {
         reset();
     }
+    EventHandlerTestSuite(Callbacks const& cb) : EventHandlerTestSuite(nullptr, cb) {}
     EventHandlerTestSuite(EventSink *sink) : EventHandlerTestSuite(sink, get_callbacks()) {}
+    EventHandlerTestSuite() : EventHandlerTestSuite(nullptr, get_callbacks()) {}
 
     void reset()
     {
         _stack_reset_root();
         m_curr->flags |= RUNK|RTOP;
-        m_has_yaml_directive = false;
-        for(TagDirective &td : m_tag_directives)
-            td = {};
         m_val_buffers.clear();
         m_val_buffers.resize((size_t)m_stack.size());
         m_arena.clear();
         m_arena.reserve(1024);
-        m_key_tag_buf.resize(256);
-        m_val_tag_buf.resize(256);
-        m_has_docs = false;
         m_src = {};
+        m_curr_doc = 0;
+        m_tag_directives.clear();
     }
+
+    C4_ALWAYS_INLINE TagDirectives &tag_directives() { return m_tag_directives; }
 
     /** @} */
 
@@ -134,15 +132,13 @@ public:
     /** @name parse events
      * @{ */
 
-    void start_parse(const char* filename, csubstr src, detail::pfn_relocate_arena relocate_arena, void *relocate_arena_data)
+    void start_parse(const char* filename, substr src)
     {
-        this->_stack_start_parse(filename, src, relocate_arena, relocate_arena_data);
+        this->_stack_start_parse(filename, src);
     }
 
     void finish_parse()
     {
-        if((_num_tag_directives() || m_has_yaml_directive) && !m_has_docs)
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "directives cannot be used without a document");
         this->_stack_finish_parse();
     }
 
@@ -185,11 +181,11 @@ public:
         if(_stack_should_push_on_begin_doc())
         {
             _c4dbgp("push!");
+            ++m_curr->node_id;
             _push();
             _enable_(DOC);
         }
         _send_("+DOC\n");
-        m_has_docs = true;
     }
     /** implicit doc end (without ...) */
     void end_doc()
@@ -201,6 +197,7 @@ public:
             _c4dbgp("pop!");
             _pop();
         }
+        ++m_curr_doc;
     }
 
     /** explicit doc start, with --- */
@@ -210,11 +207,11 @@ public:
         if(_stack_should_push_on_begin_doc())
         {
             _c4dbgp("push!");
+            ++m_curr->node_id;
             _push();
         }
         _send_("+DOC ---\n");
         _enable_(DOC);
-        m_has_docs = true;
     }
     /** explicit doc end, with ... */
     void end_doc_expl()
@@ -226,7 +223,7 @@ public:
             _c4dbgp("pop!");
             _pop();
         }
-        m_has_yaml_directive = false;
+        ++m_curr_doc;
     }
 
     /** @} */
@@ -245,6 +242,7 @@ public:
         _mark_parent_with_children_();
         _enable_(MAP|FLOW_SL);
         _push();
+        ++m_curr->node_id;
     }
     void begin_map_key_block()
     {
@@ -255,6 +253,7 @@ public:
         _mark_parent_with_children_();
         _enable_(MAP|BLOCK);
         _push();
+        ++m_curr->node_id;
     }
 
     void begin_map_val_flow()
@@ -266,6 +265,7 @@ public:
         _mark_parent_with_children_();
         _enable_(MAP|FLOW_SL);
         _push();
+        ++m_curr->node_id;
     }
     void begin_map_val_block()
     {
@@ -276,6 +276,7 @@ public:
         _mark_parent_with_children_();
         _enable_(MAP|BLOCK);
         _push();
+        ++m_curr->node_id;
     }
 
     void end_map_block()
@@ -306,6 +307,7 @@ public:
         _mark_parent_with_children_();
         _enable_(SEQ|FLOW_SL);
         _push();
+        ++m_curr->node_id;
     }
     void begin_seq_key_block()
     {
@@ -316,6 +318,7 @@ public:
         _mark_parent_with_children_();
         _enable_(SEQ|BLOCK);
         _push();
+        ++m_curr->node_id;
     }
 
     void begin_seq_val_flow()
@@ -327,6 +330,7 @@ public:
         _mark_parent_with_children_();
         _enable_(SEQ|FLOW_SL);
         _push();
+        ++m_curr->node_id;
     }
     void begin_seq_val_block()
     {
@@ -337,6 +341,7 @@ public:
         _mark_parent_with_children_();
         _enable_(SEQ|BLOCK);
         _push();
+        ++m_curr->node_id;
     }
 
     void end_seq_block()
@@ -363,6 +368,7 @@ public:
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, m_parent);
         _buf_flush_to_(m_curr->level, m_parent->level);
         m_curr->ev_data = {};
+        ++m_curr->node_id;
     }
 
     /** set the previous val as the first key of a new map, with flow style.
@@ -385,6 +391,7 @@ public:
         _RYML_ASSERT_BASIC_(m_stack.m_callbacks, tmp != m_curr->level);
         // now move the saved val as the first key
         _buf_flush_to_(tmp, m_curr->level);
+        ++m_curr->node_id;
     }
 
     /** like its flow counterpart, but this function can only be
@@ -424,6 +431,7 @@ public:
             }
         }
         _push();
+        ++m_curr->node_id;
     }
 
     /** @} */
@@ -582,15 +590,17 @@ public:
 
     void set_key_tag(csubstr tag)
     {
-        _c4dbgpf("node[{}]: set key tag: [{}]~~~{}~~~", m_curr->node_id, tag.len, tag);
+        _c4dbgpf("node[{}]: set key tag: [{}]~~~{}~~~", m_curr->node_id, tag.len, tag.str ? tag : csubstr("(no space)"));
+        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, tag.str);
         _enable_(KEYTAG);
-        m_curr->ev_data.m_key.tag = _transform_directive(tag, &m_key_tag_buf);
+        m_curr->ev_data.m_key.tag = tag;
     }
     void set_val_tag(csubstr tag)
     {
-        _c4dbgpf("node[{}]: set val tag: [{}]~~~{}~~~", m_curr->node_id, tag.len, tag);
+        _c4dbgpf("node[{}]: set val tag: [{}]~~~{}~~~", m_curr->node_id, tag.len, tag.str ? tag : csubstr("(no space)"));
+        _RYML_ASSERT_BASIC_(m_stack.m_callbacks, tag.str);
         _enable_(VALTAG);
-        m_curr->ev_data.m_val.tag = _transform_directive(tag, &m_val_tag_buf);
+        m_curr->ev_data.m_val.tag = tag;
     }
 
     /** @} */
@@ -604,18 +614,13 @@ public:
     {
         (void)yaml_version;
         _c4dbgpf("%YAML directive! {}", yaml_version);
-        if(C4_UNLIKELY(m_has_yaml_directive))
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "multiple yaml directives");
-        m_has_yaml_directive = true;
     }
 
     void add_directive_tag(csubstr handle, csubstr prefix)
     {
-        _c4dbgpf("%TAG directive! handle={} prefix={}", handle, prefix);
-        const id_type pos = _num_tag_directives();
-        if(C4_UNLIKELY(pos >= RYML_MAX_TAG_DIRECTIVES))
-            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many directives");
-        m_tag_directives[pos].create(handle, prefix);
+        _c4dbgpf("%TAG directive! handle={} prefix={} doc_id={}", handle, prefix, m_curr_doc);
+        if(C4_UNLIKELY(!m_tag_directives.add(handle, prefix, m_curr_doc)))
+            _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "too many %TAG directives");
     }
 
     /** @} */
@@ -625,28 +630,19 @@ public:
     /** @name YAML arena events */
     /** @{ */
 
+    substr arena()
+    {
+        return to_substr(m_arena);
+    }
+    substr arena_rem()
+    {
+        return substr(m_arena).last(0);
+    }
     substr alloc_arena(size_t len)
     {
         const size_t sz = m_arena.size();
-        csubstr prev = m_arena;
         m_arena.resize(sz + len);
-        substr out = to_substr(m_arena).sub(sz);
-        substr curr = to_substr(m_arena);
-        if(curr.str != prev.str)
-            _stack_relocate_to_new_arena(prev, curr);
-        return out;
-    }
-
-    substr alloc_arena(size_t len, substr *relocated)
-    {
-        csubstr prev = m_arena;
-        if(!prev.is_super(*relocated))
-            return alloc_arena(len);
-        substr out = alloc_arena(len);
-        substr curr = to_substr(m_arena);
-        if(curr.str != prev.str)
-            *relocated = _stack_relocate_to_new_arena(*relocated, prev, curr);
-        return out;
+        return to_substr(m_arena).sub(sz);
     }
 
     /** @} */
@@ -655,22 +651,25 @@ public:
 
     /** @cond dev */
 
-    /** push a new parent, add a child to the new parent, and set the
-     * child as the current node */
+    /** push a new parent */
     void _push()
     {
+        id_type curr = m_curr->node_id;
         _stack_push();
         _buf_ensure_(m_stack.size() + id_type(1));
         _buf_().clear();
         m_curr->ev_data = {};
+        m_curr->node_id = curr;
         _c4dbgpf("pushed! level={}", m_curr->level);
     }
 
     /** end the current scope */
     void _pop()
     {
+        id_type curr = m_curr->node_id;
         _buf_flush_to_(m_curr->level, m_parent->level);
         _stack_pop();
+        m_curr->node_id = curr;
     }
 
     template<type_bits bits> C4_ALWAYS_INLINE void _enable__() noexcept
@@ -792,78 +791,17 @@ public:
             _send_(' ');
             _send_(tag);
         }
+        else if(tag.begins_with("!<"))
+        {
+            _send_(' ');
+            _send_(tag.sub(1));
+        }
         else
         {
             _send_(" <");
             _send_(tag);
             _send_('>');
         }
-    }
-
-    void _clear_tag_directives_()
-    {
-        for(TagDirective &td : m_tag_directives)
-            td = {};
-    }
-    id_type _num_tag_directives() const
-    {
-        // this assumes we have a very small number of tag directives
-        for(id_type i = 0; i < RYML_MAX_TAG_DIRECTIVES; ++i)
-            if(m_tag_directives[i].handle.empty())
-                return i;
-        return RYML_MAX_TAG_DIRECTIVES;
-    }
-    csubstr _transform_directive(csubstr tag, extra::string *output)
-    {
-        // lookup from the end. We want to find the first directive that
-        // matches the tag and has a target node id leq than the given
-        // node_id.
-        for(id_type i = RYML_MAX_TAG_DIRECTIVES-1; i != NONE; --i)
-        {
-            TagDirective const& td = m_tag_directives[i];
-            if(td.handle.empty())
-                continue;
-            if(tag.begins_with(td.handle))
-            {
-                bool retry = false;
-            again1:
-                size_t len = td.transform(tag, *output, m_stack.m_callbacks);
-                if(len == 0)
-                {
-                    if(tag.begins_with("!<"))
-                        return tag.sub(1);
-                    return tag;
-                }
-                if(len > output->size())
-                {
-                    _RYML_CHECK_BASIC_(m_stack.m_callbacks, !retry);
-                    retry = true;
-                    output->resize(len);
-                    output->resize(output->capacity());
-                    goto again1;
-                }
-                return csubstr(*output).first(len);
-            }
-        }
-        if(tag.begins_with('!'))
-        {
-            if(is_custom_tag(tag))
-            {
-                _RYML_ERR_PARSE_(m_stack.m_callbacks, m_curr->pos, "tag not found");
-            }
-        }
-        bool retry = false;
-    again2:
-        csubstr result = normalize_tag_long(tag, *output);
-        if(!result.str)
-        {
-            _RYML_CHECK_BASIC_(m_stack.m_callbacks, !retry);
-            retry = true;
-            output->resize(result.len);
-            output->resize(output->capacity());
-            goto again2;
-        }
-        return result;
     }
 
     #undef _enable_

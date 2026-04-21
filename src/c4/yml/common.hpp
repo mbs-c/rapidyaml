@@ -246,20 +246,20 @@ static_assert(std::is_integral<id_type>::value, "id_type must be an integer type
 
 
 C4_SUPPRESS_WARNING_GCC_WITH_PUSH("-Wuseless-cast")
-enum : id_type {
+enum : id_type { // NOLINT
     /** an index to none */
-    NONE = id_type(-1),
+    NONE = id_type(-1), // NOLINT
 };
 C4_SUPPRESS_WARNING_GCC_CLANG_POP
 
 
-enum : size_t {
+enum : size_t { // NOLINT
     /** a null string position */
-    npos = size_t(-1)
+    npos = size_t(-1) // NOLINT
 };
 
 
-typedef enum Encoding_ {
+typedef enum Encoding_ { // NOLINT
     NOBOM,         //!< No Byte Order Mark was found
     UTF8,          //!< UTF8
     UTF16LE,       //!< UTF16, Little-Endian
@@ -347,37 +347,29 @@ struct RYML_EXPORT ParserOptions
 {
 private:
 
-    typedef enum : uint32_t {
-        SCALAR_FILTERING = (1u << 0u),
-        LOCATIONS = (1u << 1u),
-        DETECT_FLOW_ML = (1u << 2u),
+    typedef enum : uint32_t { // NOLINT
+        DETECT_FLOW_ML = (1u << 0u),
+        RESOLVE_TAGS = (1u << 1u),
+        RESOLVE_TAGS_ALL = (1u << 2u),
+        SCALAR_FILTERING = (1u << 3u),
+        LOCATIONS = (1u << 4u),
         DEFAULTS = SCALAR_FILTERING|DETECT_FLOW_ML,
     } Flags_e;
 
     uint32_t flags = DEFAULTS;
 
+    ParserOptions& set_flags_(bool enabled, Flags_e f)
+    {
+        if(enabled)
+            flags |= f;
+        else
+            flags &= ~f;
+        return *this;
+    }
+
 public:
 
     ParserOptions() = default;
-
-public:
-
-    /** @name source location tracking */
-    /** @{ */
-
-    /** enable/disable source location tracking */
-    ParserOptions& locations(bool enabled) noexcept
-    {
-        if(enabled)
-            flags |= LOCATIONS;
-        else
-            flags &= ~LOCATIONS;
-        return *this;
-    }
-    /** query source location tracking status */
-    C4_ALWAYS_INLINE bool locations() const noexcept { return (flags & LOCATIONS); }
-
-    /** @} */
 
 public:
 
@@ -390,14 +382,53 @@ public:
      * different from that of the opening bracket. */
     ParserOptions& detect_flow_ml(bool enabled) noexcept
     {
-        if(enabled)
-            flags |= DETECT_FLOW_ML;
-        else
-            flags &= ~DETECT_FLOW_ML;
-        return *this;
+        return set_flags_(enabled, DETECT_FLOW_ML);
     }
     /** query status of detection of @ref FLOW_ML container style. */
     C4_ALWAYS_INLINE bool detect_flow_ml() const noexcept { return (flags & DETECT_FLOW_ML); }
+
+    /** @} */
+
+public:
+
+    /** @name resolution of tags */
+    /** @{ */
+
+    /** enable/disable resolution of YAML tags during parsing. When
+     * enabled, tags are resolved according to existing tag
+     * directives. Disabled by default. See also @ref
+     * ParserOptions::resolve_tags_all(). */
+    ParserOptions& resolve_tags(bool enabled) noexcept
+    {
+        return set_flags_(enabled, RESOLVE_TAGS);
+    }
+    /** query status of tag resolution setting. */
+    C4_ALWAYS_INLINE bool resolve_tags() const noexcept { return (flags & RESOLVE_TAGS); }
+
+    /** When resolve_tags() is enabled, resolve not just prefixed tags
+     * of the form <pre>!handle!tag</pre>, but also non-prefixed tags
+     * (<pre>!!tag</pre> and <pre>!tag!</pre>). Disabled by default. */
+    ParserOptions& resolve_tags_all(bool enabled) noexcept
+    {
+        return set_flags_(enabled, RESOLVE_TAGS_ALL);
+    }
+    /** query status of non-prefixed tag resolution setting. */
+    C4_ALWAYS_INLINE bool resolve_tags_all() const noexcept { return (flags & RESOLVE_TAGS_ALL); }
+
+    /** @} */
+
+public:
+
+    /** @name source location tracking */
+    /** @{ */
+
+    /** enable/disable source location tracking */
+    ParserOptions& locations(bool enabled) noexcept
+    {
+        return set_flags_(enabled, LOCATIONS);
+    }
+    /** query source location tracking status */
+    C4_ALWAYS_INLINE bool locations() const noexcept { return (flags & LOCATIONS); }
 
     /** @} */
 
@@ -409,11 +440,7 @@ public:
     /** enable/disable scalar filtering while parsing */
     ParserOptions& scalar_filtering(bool enabled) noexcept
     {
-        if(enabled)
-            flags |= SCALAR_FILTERING;
-        else
-            flags &= ~SCALAR_FILTERING;
-        return *this;
+        return set_flags_(enabled, SCALAR_FILTERING);
     }
     /** query scalar filtering status */
     C4_ALWAYS_INLINE bool scalar_filtering() const noexcept { return (flags & SCALAR_FILTERING); }

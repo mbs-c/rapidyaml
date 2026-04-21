@@ -23,6 +23,8 @@
 #   pragma warning(disable: 4296/*expression is always 'boolean_value'*/)
 #endif
 
+// NOLINTBEGIN(modernize-avoid-c-style-cast)
+
 namespace c4 {
 namespace yml {
 
@@ -170,7 +172,7 @@ struct RoNodeMethods;
 /** a CRTP base providing read-only methods for @ref ConstNodeRef and @ref NodeRef */
 namespace detail {
 template<class Impl, class ConstImpl>
-struct RoNodeMethods
+struct RoNodeMethods // NOLINT
 {
     C4_SUPPRESS_WARNING_GCC_CLANG_WITH_PUSH("-Wcast-align")
     /** @cond dev */
@@ -376,6 +378,10 @@ public:
     template<class U=Impl>
     C4_ALWAYS_INLINE auto find_sibling(csubstr name) RYML_NOEXCEPT -> _C4_IF_MUTABLE(Impl) { _C4RR(); return {tree__, tree__->find_sibling(id__, name)}; }  /**< Forward to @ref Tree::find_sibling(). Node must be readable. */
     C4_ALWAYS_INLINE ConstImpl find_sibling(csubstr name) const RYML_NOEXCEPT { _C4RR(); return {tree_, tree_->find_sibling(id_, name)}; }                  /**< Forward to @ref Tree::find_sibling(). Node must be readable. */
+
+    template<class U=Impl>
+    C4_ALWAYS_INLINE auto ancestor_doc() RYML_NOEXCEPT -> _C4_IF_MUTABLE(Impl) { _C4RR(); return {tree__, tree__->ancestor_doc(id__)}; }  /**< Forward to @ref Tree::ancestor_doc(). Node must be readable. */
+    C4_ALWAYS_INLINE ConstImpl ancestor_doc() const RYML_NOEXCEPT { _C4RR(); return {tree_, tree_->ancestor_doc(id_)}; }                  /**< Forward to @ref Tree::ancestor_doc(). Node must be readable. */
 
     C4_ALWAYS_INLINE id_type num_children() const RYML_NOEXCEPT { _C4RR(); return tree_->num_children(id_); } /**< O(num_children). Forward to @ref Tree::num_children(). */
     C4_ALWAYS_INLINE id_type num_siblings() const RYML_NOEXCEPT { _C4RR(); return tree_->num_siblings(id_); } /**< O(num_children). Forward to @ref Tree::num_siblings(). */
@@ -726,7 +732,7 @@ public:
 
 public:
 
-    #if defined(__clang__)
+    #if defined(__clang__) // NOLINT
     #   pragma clang diagnostic push
     #   pragma clang diagnostic ignored "-Wnull-dereference"
     #elif defined(__GNUC__)
@@ -1660,7 +1666,7 @@ C4_ALWAYS_INLINE bool readkey(NodeRef const& C4_RESTRICT n, T *v)
 } // namespace yml
 } // namespace c4
 
-
+// NOLINTEND(modernize-avoid-c-style-cast)
 
 #ifdef __clang__
 #   pragma clang diagnostic pop

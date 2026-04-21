@@ -23,7 +23,7 @@ class Tree;
 using tag_bits = uint16_t;
 
 /** a bit mask for marking tags for types */
-typedef enum : tag_bits {
+typedef enum : tag_bits { // NOLINT
     TAG_NONE      =  0,
     // container types
     TAG_MAP       =  1, /**< !!map   Unordered set of key: value pairs without duplicates. @see https://yaml.org/type/map.html */
@@ -51,9 +51,9 @@ RYML_EXPORT csubstr normalize_tag(csubstr tag);
 RYML_EXPORT csubstr normalize_tag_long(csubstr tag);
 RYML_EXPORT csubstr normalize_tag_long(csubstr tag, substr output);
 
+/** is a tag of the form `!handle!tag`? */
 RYML_EXPORT bool is_custom_tag(csubstr tag);
 RYML_EXPORT bool is_valid_tag_handle(csubstr handle);
-
 
 struct RYML_EXPORT TagDirective
 {
@@ -61,11 +61,8 @@ struct RYML_EXPORT TagDirective
     csubstr handle;
     /** Eg <pre>tag:example.com,2000:app/</pre> in <pre>%TAG !e! tag:example.com,2000:app/</pre> */
     csubstr prefix;
-    /** The next node to which this tag directive applies */
-    id_type next_node_id;
-
-    void create(csubstr handle, csubstr prefix); ///< leaves next_node_id unfilled
-    size_t transform(csubstr tag, substr output, Callbacks const& callbacks, bool with_brackets=true) const;
+    /** ID of the target document */
+    id_type doc_id;
 };
 
 struct RYML_EXPORT TagDirectiveRange
@@ -74,7 +71,36 @@ struct RYML_EXPORT TagDirectiveRange
     TagDirective const* C4_RESTRICT e;
     C4_ALWAYS_INLINE TagDirective const* begin() const noexcept { return b; }
     C4_ALWAYS_INLINE TagDirective const* end() const noexcept { return e; }
+    id_type size() const noexcept { return static_cast<id_type>(e - b); }
 };
+
+struct RYML_EXPORT TagDirectives
+{
+    TagDirective m_directives[RYML_MAX_TAG_DIRECTIVES];
+    bool redefines_qmrk() const noexcept;
+    TagDirective const* add(csubstr handle, csubstr prefix, id_type doc_id) noexcept;
+    void clear() noexcept;
+    id_type size() const noexcept;
+    TagDirective const* lookup(csubstr tag, id_type id) const noexcept;
+    TagDirective * begin() noexcept { return m_directives; };
+    TagDirective * end() noexcept { return m_directives + size(); };
+    TagDirective const* begin() const noexcept { return m_directives; };
+    TagDirective const* end() const noexcept { return m_directives + size(); };
+    TagDirectiveRange directives() const noexcept { return TagDirectiveRange{m_directives, m_directives + size()}; }
+    TagDirectiveRange lookup_range(id_type doc_id) const noexcept;
+    /** @note the str member of the return value may be null, meaning
+     * that the buffer was not enough to fit the transformed tag.
+     *
+     * @note the return value may actually be not a substring of the
+     * input buffer. */
+    csubstr resolve(substr buf, size_t *bufsz, csubstr tag, id_type doc_id, Location const& ymlloc, Callbacks const& callbacks, bool with_brackets=true) const;
+};
+
+/** returns the length of the transformed tag, or 0 to signal that the
+ * tag is local and cannot be resolved */
+RYML_EXPORT size_t transform_tag(substr output, csubstr handle, csubstr prefix, csubstr tag,
+                                 Callbacks const& callbacks, Location const& ymlloc={},
+                                 bool with_brackets=true);
 
 /** @} */
 

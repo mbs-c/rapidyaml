@@ -120,13 +120,8 @@ void test_compare(Tree const& actual, id_type node_actual,
     EXPECT_EQ(actual.has_val_tag(node_actual), expected.has_val_tag(node_expected));
     if(actual.has_val_tag(node_actual) && expected.has_val_tag(node_expected))
     {
-        auto filtered = [](csubstr tag) {
-            if(tag.begins_with("!<!") && tag.ends_with('>'))
-                return tag.offs(3, 1);
-            return tag;
-        };
-        csubstr actual_tag = filtered(actual.val_tag(node_actual));
-        csubstr expected_tag = filtered(actual.val_tag(node_expected));
+        csubstr actual_tag = actual.val_tag(node_actual);
+        csubstr expected_tag = expected.val_tag(node_expected);
         EXPECT_EQ(actual_tag, expected_tag);
     }
 
@@ -264,6 +259,8 @@ struct ExpectedErrorVisit : public ExpectedErrorBasic
 
 
 //-----------------------------------------------------------------------------
+namespace {
+
 C4_IF_EXCEPTIONS_(
     ,
     std::jmp_buf s_jmp_env_expect_error;
@@ -271,6 +268,58 @@ C4_IF_EXCEPTIONS_(
     ExpectedErrorParse s_jmp_err_parse = {};
     ExpectedErrorVisit s_jmp_err_visit = {};
     )
+
+[[noreturn]] void experror_callback_basic(csubstr msg, ErrorDataBasic const& errdata, void *this_)
+{
+    _c4dbgp("called basic error callback! from here:");
+    #ifdef RYML_DBG
+    _dbg_printf("{}:{}: cpploc\n", errdata.location.name, errdata.location.line);
+    _dbg_printf("{}:{}: {}\n", errdata.location.name, errdata.location.line, msg);
+    #endif
+    ((ExpectError*)this_)->m_error = ExpectedErrorType::err_basic; // assign in here to ensure the exception was thrown here
+    C4_IF_EXCEPTIONS(
+        throw ExpectedErrorBasic(msg, errdata);
+        ,
+        s_jmp_err_basic = ExpectedErrorBasic(msg, errdata);
+        std::longjmp(s_jmp_env_expect_error, 1);
+        );
+    C4_UNREACHABLE_AFTER_ERR();
+}
+
+[[noreturn]] void experror_callback_parse(csubstr msg, ErrorDataParse const& errdata, void *this_)
+{
+    _c4dbgpf("called parse error callback! (withlocation={})", bool(errdata.ymlloc));
+    #ifdef RYML_DBG
+    _dbg_printf("{}:{}: cpploc\n", errdata.cpploc.name, errdata.cpploc.line);
+    _dbg_printf("{}:{}: {}\n", errdata.ymlloc.name, errdata.ymlloc.line, msg);
+    #endif
+    ((ExpectError*)this_)->m_error = ExpectedErrorType::err_parse; // assign in here to ensure the exception was thrown here
+    C4_IF_EXCEPTIONS(
+        throw ExpectedErrorParse(msg, errdata);
+        ,
+        s_jmp_err_parse = ExpectedErrorParse(msg, errdata);
+        std::longjmp(s_jmp_env_expect_error, 1);
+    );
+    C4_UNREACHABLE_AFTER_ERR();
+}
+
+[[noreturn]] void experror_callback_visit(csubstr msg, ErrorDataVisit const& errdata, void *this_)
+{
+    _c4dbgp("called visit error callback!");
+    #ifdef RYML_DBG
+    _dbg_printf("{}:{}: cpploc\n", errdata.cpploc.name, errdata.cpploc.line);
+    _dbg_printf("{}:{}: {}\n", errdata.cpploc.name, errdata.cpploc.line, msg);
+    #endif
+    ((ExpectError*)this_)->m_error = ExpectedErrorType::err_visit; // assign in here to ensure the exception was thrown here
+    C4_IF_EXCEPTIONS(
+        throw ExpectedErrorVisit(msg, errdata);
+        ,
+        s_jmp_err_visit = ExpectedErrorVisit(msg, errdata);
+        std::longjmp(s_jmp_env_expect_error, 1);
+    );
+    C4_UNREACHABLE_AFTER_ERR();
+}
+} // namespace
 
 ExpectError::ExpectError(ExpectedErrorType errtype, Tree *tree, Location loc)
     : m_error(ExpectedErrorType::err_none)
@@ -282,68 +331,29 @@ ExpectError::ExpectError(ExpectedErrorType errtype, Tree *tree, Location loc)
 {
     EXPECT_NE(m_glob_prev.m_allocate, nullptr);
     EXPECT_NE(m_tree_prev.m_allocate, nullptr);
-    auto errb = [](csubstr msg, ErrorDataBasic const& errdata, void *this_) {
-        _c4dbgp("called basic error callback! from here:");
-        #ifdef RYML_DBG
-        _dbg_printf("{}:{}: cpploc\n", errdata.location.name, errdata.location.line);
-        _dbg_printf("{}:{}: {}\n", errdata.location.name, errdata.location.line, msg);
-        #endif
-        ((ExpectError*)this_)->m_error = ExpectedErrorType::err_basic; // assign in here to ensure the exception was thrown here
-        C4_IF_EXCEPTIONS(
-            throw ExpectedErrorBasic(msg, errdata);
-            ,
-            s_jmp_err_basic = ExpectedErrorBasic(msg, errdata);
-            std::longjmp(s_jmp_env_expect_error, 1);
-        );
-        C4_UNREACHABLE_AFTER_ERR();
-    };
-    auto errp = [](csubstr msg, ErrorDataParse const& errdata, void *this_) {
-        _c4dbgpf("called parse error callback! (withlocation={})", bool(errdata.ymlloc));
-        #ifdef RYML_DBG
-        _dbg_printf("{}:{}: cpploc\n", errdata.cpploc.name, errdata.cpploc.line);
-        _dbg_printf("{}:{}: {}\n", errdata.cpploc.name, errdata.cpploc.line, msg);
-        #endif
-        ((ExpectError*)this_)->m_error = ExpectedErrorType::err_parse; // assign in here to ensure the exception was thrown here
-        C4_IF_EXCEPTIONS(
-            throw ExpectedErrorParse(msg, errdata);
-            ,
-            s_jmp_err_parse = ExpectedErrorParse(msg, errdata);
-            std::longjmp(s_jmp_env_expect_error, 1);
-        );
-        C4_UNREACHABLE_AFTER_ERR();
-    };
-    auto errv = [](csubstr msg, ErrorDataVisit const& errdata, void *this_) {
-        _c4dbgp("called visit error callback!");
-        #ifdef RYML_DBG
-        _dbg_printf("{}:{}: cpploc\n", errdata.cpploc.name, errdata.cpploc.line);
-        _dbg_printf("{}:{}: {}\n", errdata.cpploc.name, errdata.cpploc.line, msg);
-        #endif
-        ((ExpectError*)this_)->m_error = ExpectedErrorType::err_visit; // assign in here to ensure the exception was thrown here
-        C4_IF_EXCEPTIONS(
-            throw ExpectedErrorVisit(msg, errdata);
-            ,
-            s_jmp_err_visit = ExpectedErrorVisit(msg, errdata);
-            std::longjmp(s_jmp_env_expect_error, 1);
-        );
-        C4_UNREACHABLE_AFTER_ERR();
-    };
     c4::yml::Callbacks tcb = m_tree_prev;
     c4::yml::Callbacks gcb = m_glob_prev;
-    tcb.set_user_data((void*)this).set_error_basic(errb).set_error_parse(errp).set_error_visit(errv);
-    gcb.set_user_data((void*)this).set_error_basic(errb).set_error_parse(errp).set_error_visit(errv);
+    tcb.set_user_data((void*)this)
+        .set_error_basic(experror_callback_basic)
+        .set_error_parse(experror_callback_parse)
+        .set_error_visit(experror_callback_visit);
+    gcb.set_user_data((void*)this)
+        .set_error_basic(experror_callback_basic)
+        .set_error_parse(experror_callback_parse)
+        .set_error_visit(experror_callback_visit);
     if(tree)
     {
-        _c4dbgpf("setting error callback: tree err={}", c4::fmt::hex((void const*)&errp));
+        _c4dbgpf("setting error callback: tree={} err={}", c4::fmt::hex((void const*)m_tree), c4::fmt::hex((void const*)tcb.m_error_parse));
         tree->callbacks(tcb);
-        EXPECT_EQ(tree->callbacks().m_error_basic, errb);
-        EXPECT_EQ(tree->callbacks().m_error_parse, errp);
-        EXPECT_EQ(tree->callbacks().m_error_visit, errv);
+        EXPECT_EQ(tree->callbacks().m_error_basic, experror_callback_basic);
+        EXPECT_EQ(tree->callbacks().m_error_parse, experror_callback_parse);
+        EXPECT_EQ(tree->callbacks().m_error_visit, experror_callback_visit);
     }
-    _c4dbgpf("setting error callback: global err={}", c4::fmt::hex((void const*)&errp));
+    _c4dbgpf("setting error callback: global err={}", c4::fmt::hex((void const*)gcb.m_error_parse));
     set_callbacks(gcb);
-    EXPECT_EQ(get_callbacks().m_error_basic, errb);
-    EXPECT_EQ(get_callbacks().m_error_parse, errp);
-    EXPECT_EQ(get_callbacks().m_error_visit, errv);
+    EXPECT_EQ(get_callbacks().m_error_basic, experror_callback_basic);
+    EXPECT_EQ(get_callbacks().m_error_parse, experror_callback_parse);
+    EXPECT_EQ(get_callbacks().m_error_visit, experror_callback_visit);
 }
 
 ExpectError::~ExpectError()
@@ -390,7 +400,7 @@ void ExpectError::check_success(Tree *tree, fntestref fn)
         fn();
         _c4dbgp("check expected success: success!");
     }
-    C4_IF_EXCEPTIONS_(catch(ExpectedErrorParse const&), else)
+    C4_IF_EXCEPTIONS_(catch(...), else)
     {
         FAIL() << "check expected success: failed!";
     }

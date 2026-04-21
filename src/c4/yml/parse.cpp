@@ -23,7 +23,7 @@ namespace yml {
 template class ParseEngine<EventHandlerTree>;
 
 namespace {
-inline void _reset_tree_handler(Parser *parser, Tree *t, id_type node_id)
+void _reset_tree_handler(Parser *parser, Tree *t, id_type node_id)
 {
     _RYML_ASSERT_BASIC(parser);
     _RYML_ASSERT_BASIC(t);

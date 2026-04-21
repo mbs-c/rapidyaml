@@ -56,7 +56,7 @@ C4_NO_INLINE void escape_scalar_fn(Fn &&fn, csubstr scalar, bool keep_newlines=f
     // cast to u8 to avoid having to deal with negative
     // signed chars (which are present in some platforms)
     uint8_t const* C4_RESTRICT s = reinterpret_cast<uint8_t const*>(scalar.str); // NOLINT(*-reinterpret-cast)
-    // NOLINTBEGIN(*-goto)
+    // NOLINTBEGIN(*-goto,bugprone-use-after-move,hicpp-invalid-access-moved)
     for(size_t i = 0; i < scalar.len; ++i)
     {
         switch(s[i])
@@ -156,7 +156,7 @@ C4_NO_INLINE void escape_scalar_fn(Fn &&fn, csubstr scalar, bool keep_newlines=f
     // flush the rest
     if(scalar.len > prev)
         std::forward<Fn>(fn)(scalar.sub(prev));
-    // NOLINTEND(*-goto)
+    // NOLINTEND(*-goto,bugprone-use-after-move,hicpp-invalid-access-moved)
 }
 
 
