@@ -16,7 +16,8 @@ jobs:
         - {std: 11, namesfx: 64bit      , cmk: "-DCMAKE_CXX_FLAGS=-m64"}
         - {std: 11, namesfx: 64bit_nocb , cmk: "-DCMAKE_CXX_FLAGS=-m64 -DRYML_DEFAULT_CALLBACKS=OFF"}
         - {std: 11, namesfx: 64bit_noexc, cmk: "-DCMAKE_CXX_FLAGS='-m64 -fno-exceptions -fno-rtti'"}
-        - {std: 11, namesfx: 64bit_exc  , cmk: "-DCMAKE_CXX_FLAGS='-m64' -DRYML_DEFAULT_CALLBACK_USES_EXCEPTIONS=ON"}
+        - {std: 11, namesfx: 64bit_exc  , cmk: "-DCMAKE_CXX_FLAGS=-m64 -DRYML_DEFAULT_CALLBACK_USES_EXCEPTIONS=ON"}
+        - {std: 11, namesfx: 64bit_17   , cmk: "-DCMAKE_CXX_FLAGS=-m64 -DCMAKE_CXX_STANDARD=17"}
         - {std: 11, namesfx: 64bit_dbg  , cmk: "-DCMAKE_CXX_FLAGS=-m64 -DRYML_DBG=ON", halfprocs: yes}
         - {std: 11, namesfx: 32bit      , cmk: "-DCMAKE_CXX_FLAGS=-m32", halfprocs: yes}
         #- {std: 11, namesfx: 32bit_dbg  , cmk: "-DCMAKE_CXX_FLAGS=-m32 -DRYML_DBG=ON"}
@@ -80,8 +81,8 @@ jobs:
       with:
         name: coverage-${{env.BUILD_ID}}
         path: |
-          build/${{env.BUILD_ID}}/lcov
-          build/${{env.BUILD_ID}}/coverage3-final_filtered.lcov
+          build/${{env.BUILD_ID}}/lcov-tmp
+          build/${{env.BUILD_ID}}/lcov-tmp/result.lcov
     - name: upload codecov
       run: |
         cmake --build build/$BUILD_ID --target ryml-coverage-submit-codecov --verbose
@@ -91,7 +92,7 @@ jobs:
     #  with:
     #    github-token: ${{secrets.COVERALLS_REPO_TOKEN}}
     #    parallel: true
-    #    files: build/${{env.BUILD_ID}}/coverage3-final_filtered.lcov
+    #    files: build/${{env.BUILD_ID}}/lcov-tmp/result.lcov
 
   #coveralls_finish:
   #  needs: coverage

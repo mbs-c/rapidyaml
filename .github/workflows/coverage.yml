@@ -39,7 +39,10 @@ jobs:
           cmk: -DCMAKE_CXX_FLAGS='-m64 -fno-exceptions -fno-rtti'
         - std: 11
           namesfx: 64bit_exc
-          cmk: -DCMAKE_CXX_FLAGS='-m64' -DRYML_DEFAULT_CALLBACK_USES_EXCEPTIONS=ON
+          cmk: -DCMAKE_CXX_FLAGS=-m64 -DRYML_DEFAULT_CALLBACK_USES_EXCEPTIONS=ON
+        - std: 11
+          namesfx: 64bit_17
+          cmk: -DCMAKE_CXX_FLAGS=-m64 -DCMAKE_CXX_STANDARD=17
         - std: 11
           namesfx: 64bit_dbg
           cmk: -DCMAKE_CXX_FLAGS=-m64 -DRYML_DBG=ON
@@ -112,8 +115,8 @@ jobs:
       with:
         name: coverage-${{env.BUILD_ID}}
         path: |
-          build/${{env.BUILD_ID}}/lcov
-          build/${{env.BUILD_ID}}/coverage3-final_filtered.lcov
+          build/${{env.BUILD_ID}}/lcov-tmp
+          build/${{env.BUILD_ID}}/lcov-tmp/result.lcov
     - name: upload codecov
       run: |
         cmake --build build/$BUILD_ID --target ryml-coverage-submit-codecov --verbose

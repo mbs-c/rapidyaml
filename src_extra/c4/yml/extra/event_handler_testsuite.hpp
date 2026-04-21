@@ -642,7 +642,7 @@ public:
     {
         const size_t sz = m_arena.size();
         m_arena.resize(sz + len);
-        return to_substr(m_arena).sub(sz);
+        return to_substr(m_arena).sub(sz); // LCOV_EXCL_LINE
     }
 
     /** @} */
